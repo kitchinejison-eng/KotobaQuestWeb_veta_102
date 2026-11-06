@@ -1,0 +1,16 @@
+JLect Japanese Handwriting Recognition Tool (JLect JHR)
+Copyright (c) Zachary Read | JLect.com, 2013-2024.
+Original repository: https://github.com/ZacharyRead/jlect-jhr
+Original project license: Creative Commons Attribution-ShareAlike 3.0 Unported
+https://creativecommons.org/licenses/by-sa/3.0/
+
+The file kotoba-jlect-model.js is a reformatting of the original JLect JHR
+Japanese handwriting stroke-signature dataset. The model and the companion
+KotobaQuest adapter kotoba-jlect-candidates.js are distributed under
+Creative Commons Attribution-ShareAlike 3.0 Unported. Changes: the original
+dataset was converted to a browser-global array, and a candidate-ranking
+adapter was created for the independent KotobaQuest writing canvas.
+
+Attribution and the license URL must be retained when redistributed.
+The original software's license is not an unrestricted permissive license;
+commercial redistributors must comply with the ShareAlike provisions.
