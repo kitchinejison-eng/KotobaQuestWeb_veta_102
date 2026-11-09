@@ -10,7 +10,8 @@
   <link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192.png">
   <meta name="description" content="ことば・読み・発話・会話の練習アプリ">
   <title>ことばクエスト 開発版｜トレーニング</title>
-  <link rel="stylesheet" href="style.css?v=veta2">
+  <link rel="stylesheet" href="style.css?v=veta9-profile-dash">
+  <link rel="stylesheet" href="difficulty-veta11.css?v=1">
   <link rel="stylesheet" href="browser-responsive.css?v=89">
   <link rel="stylesheet" href="v47-improvements.css?v=jlect-choice-1">
   <link rel="stylesheet" href="pronunciation-training.css?v=89">
@@ -19,6 +20,7 @@
   <link rel="stylesheet" href="title-responsive-beta3.css?v=3">
   <link rel="stylesheet" href="articulation-random-beta4.css?v=4">
   <link rel="stylesheet" href="responsive-beta6.css?v=6">
+  <link rel="stylesheet" href="veta14-ui.css?v=2">
 <style>.quiz-mascot-strip{display:flex;align-items:center;gap:12px;padding:8px 12px;margin-bottom:12px;background:#f1f9ff;border:1px solid #c5e3f8;border-radius:16px;color:#174564;font-weight:700;font-size:clamp(13px,2.9vw,17px)}.quiz-buddy-icons{display:flex;gap:4px;margin-left:auto}.quiz-buddy-icons img{width:41px;height:41px;object-fit:contain}@media(max-width:470px){.quiz-buddy-icons{display:none}}.quiz-mascot-strip img{object-fit:contain;flex:0 0 62px;max-width:20vw;height:62px}@media(max-width:400px){.quiz-mascot-strip{gap:8px;padding:5px 8px}.quiz-mascot-strip img{width:48px;height:48px;flex-basis:48px}}</style>
 <style>.menu-button[hidden]{display:none!important}</style>
 </head>
@@ -62,6 +64,9 @@
           <button type="button" class="menu-button menu-record" id="titleRecordsBtn">
             <span class="menu-icon" aria-hidden="true">📊</span><span><strong>トレーニング記録を見る</strong><small>これまでの記録を確認</small></span>
           </button>
+          <button type="button" class="menu-button menu-profile" id="titleProfileBtn">
+            <span class="menu-icon" aria-hidden="true">👤</span><span><strong>プロフィール</strong><small>自分の設定・練習の記録を見る</small></span>
+          </button>
           <button type="button" class="menu-button menu-settings" id="titleSettingsBtn">
             <span class="menu-icon" aria-hidden="true">⚙️</span><span><strong>設定</strong><small>音・マイク・色・学習</small></span>
           </button>
@@ -100,6 +105,32 @@
           <button id="cancelUserProfileBtn" class="user-profile-quiet" type="button" hidden>変更をやめて戻る</button>
         </div>
       </form>
+    </div>
+  </section>
+
+  <!-- ユーザープロフィール：既存のユーザー設定と学習記録を表示 -->
+  <section id="userProfileView" class="screen user-profile-screen" aria-label="プロフィール">
+    <div class="user-profile-card user-profile-overview">
+      <p class="user-profile-kicker">KOTOBA QUEST</p>
+      <div class="user-profile-icon" aria-hidden="true">👤</div>
+      <h1 class="user-profile-view-title">マイプロフィール</h1>
+      <p class="user-profile-intro">トレーニングで使っているプロフィールを確認できます。</p>
+      <dl class="user-profile-details">
+        <div><dt>表示名</dt><dd id="profileViewDisplayName">読み込み中…</dd></div>
+        <div><dt>利用者ID・管理番号</dt><dd id="profileViewRecordCode">—</dd></div>
+        <div><dt>プロフィール登録日</dt><dd id="profileViewCreatedAt">—</dd></div>
+      </dl>
+      <div class="user-profile-stat-grid" aria-label="学習状況">
+        <div><span>トレーニング記録</span><strong id="profileViewTrainingCount">0回</strong></div>
+        <div><span>メダル</span><strong id="profileViewMedalCount">0枚</strong></div>
+        <div><span>学習モード</span><strong id="profileViewLearningMode">OFF</strong></div>
+        <div><span>分析済み回答</span><strong id="profileViewLearningCount">0問</strong></div>
+      </div>
+      <p class="user-profile-local-note">表示内容はこのブラウザ内のデータです。ほかの端末とは自動同期されません。</p>
+      <div class="user-profile-actions">
+        <button id="profileViewEditBtn" class="user-profile-primary" type="button">✏️ ユーザー設定を編集</button>
+        <button id="profileViewBackBtn" class="user-profile-secondary" type="button">← 戻る</button>
+      </div>
     </div>
   </section>
 
@@ -184,7 +215,7 @@
     <div class="screen-head">
       <button type="button" class="back-button" id="homeToTitleBtn">←</button>
       <div class="screen-head-title">ことばクエスト 開発版</div>
-      <button type="button" class="head-icon-button" id="genreSettingsBtn" aria-label="設定">⚙️</button>
+      <button type="button" class="head-icon-button v15-genre-settings-btn" id="genreSettingsBtn" aria-label="設定を開く"><span aria-hidden="true">⚙️</span><span>設定</span></button>
     </div>
     <div class="screen-intro">
       <h2>ジャンルを選んでください（7ジャンル・30課題）</h2>
@@ -210,6 +241,11 @@
         </div>
       </div>
       <p id="selectedGenreDescription" class="muted"></p>
+      <div class="v14-genre-controls" aria-label="このジャンルの練習設定">
+        <label>出題する問題数 <select id="genreQuestionCount"><option value="5">5問</option><option value="10">10問</option><option value="15">15問</option><option value="20">20問</option></select></label>
+        <label class="v14-genre-hint">💡 ヒントを使う <input id="genreHints" type="checkbox" checked></label>
+        <p>このジャンルの設定を優先します。構音筋ナビは従来どおり5問です。</p>
+      </div>
       <div id="activityCards" class="activity-grid"></div>
       <select id="activitySelect" class="compat-hidden"><option value="">課題を選んでください</option></select>
       <div id="activityDescription" class="compat-hidden"></div>
@@ -260,6 +296,7 @@
       <div id="resultScore" class="big-score">0 / 10</div>
       <div id="resultRate" class="rate">正答率 0%</div>
       <p id="resultMessage" class="result-message"></p>
+      <section id="v14MasteryResult" class="v14-mastery-result" aria-label="熟練度の結果" hidden><strong id="v14MasteryTitle">Lv.1 熟練度</strong><span id="v14MasteryText">0 / 100</span><div class="v14-mastery-track"><div id="v14MasteryBar"></div></div><p id="v14MasteryNext"></p></section>
       <div id="resultQuestionDetails" class="question-result-details" aria-label="問題ごとの結果"></div>
       <div class="result-actions">
         <button class="primary-button" id="retryBtn" type="button">もう一度挑戦</button>
@@ -322,13 +359,6 @@
       <div></div>
     </div>
 
-    <div class="settings-panel user-profile-settings-panel">
-      <h3>👤 ユーザー設定</h3>
-      <p id="settingsUserProfileSummary" class="settings-sub">記録に表示する名前を設定できます。</p>
-      <p class="settings-sub">ここで設定した表示名・管理番号は、新しいトレーニング記録とExcel出力に自動で反映されます。</p>
-      <button id="editUserProfileBtn" class="secondary-button" type="button">ユーザー設定を編集</button>
-    </div>
-
     <div class="settings-panel">
       <h3>🎤 マイク</h3>
       <p id="micPermissionStatus" class="settings-status">確認しています…</p>
@@ -355,6 +385,8 @@
         <button type="button" class="theme-choice blue" id="themeBlue"><span></span>青</button>
         <button type="button" class="theme-choice red" id="themeRed"><span></span>赤</button>
         <button type="button" class="theme-choice yellow" id="themeYellow"><span></span>黄色</button>
+        <button type="button" class="theme-choice green" id="themeGreen"><span></span>緑</button>
+        <button type="button" class="theme-choice purple" id="themePurple"><span></span>紫</button>
       </div>
     </div>
 
@@ -363,45 +395,13 @@
       <label class="switch-row"><span>トレーニング中に音楽を流す</span><input id="musicOn" type="checkbox" checked></label>
     </div>
 
-    <div class="settings-panel" id="adaptiveSettingsPanel">
-      <h3>🧠 個別学習・自動難易度（統合版）</h3>
-      <p class="settings-sub">CPUの自動調整とBKT型の確率分析を端末内で行います。初期状態は自動調整OFFです。</p>
-      <label class="switch-row"><span>CPU自動難易度調整</span><input id="adaptiveEnabled" type="checkbox"></label>
-      <label class="switch-row"><span>手動で難易度を固定する（自動OFF時）</span><input id="adaptiveManualMode" type="checkbox"></label>
-      <label class="switch-row"><span>習熟度の確率分析（BKT型）</span><input id="adaptiveBKT" type="checkbox" checked></label>
-      <label class="switch-row"><span>間違えた問題の復習を優先</span><input id="adaptiveReview" type="checkbox" checked></label>
-      <label class="setting-select-row">自動調整OFF時の難易度 <select id="adaptiveManualLevel"><option value="1">Lv.1 基礎</option><option value="2" selected>Lv.2 標準</option><option value="3">Lv.3 応用</option></select></label>
-      <label class="switch-row"><span>個別サポート設定を有効にする</span><input id="adaptiveSupport" type="checkbox"></label>
-      <details><summary>任意：障害・特性の区分を登録する</summary>
-        <p class="settings-sub">複数選択できます。未設定でも利用可能です。障害名で難易度は決定しません。</p>
-        <label class="switch-row"><span>失語症</span><input data-kotoba-disability value="失語症" type="checkbox"></label>
-        <label class="switch-row"><span>高次脳機能障害</span><input data-kotoba-disability value="高次脳機能障害" type="checkbox"></label>
-        <label class="switch-row"><span>知的障害</span><input data-kotoba-disability value="知的障害" type="checkbox"></label>
-        <label class="switch-row"><span>発達障害</span><input data-kotoba-disability value="発達障害" type="checkbox"></label>
-        <label class="switch-row"><span>吃音</span><input data-kotoba-disability value="吃音" type="checkbox"></label>
-        <label class="switch-row"><span>構音障害</span><input data-kotoba-disability value="構音障害" type="checkbox"></label>
-        <label class="switch-row"><span>認知機能の低下</span><input data-kotoba-disability value="認知機能の低下" type="checkbox"></label>
-      </details>
-      <p class="settings-sub">サポート希望は保存できます。自動反映は今後の開発対象です。</p>
-      <label class="switch-row"><span>回答時間に余裕がほしい</span><input data-kotoba-support value="extra-time" type="checkbox"></label>
-      <label class="switch-row"><span>問題文の読み上げを優先したい</span><input data-kotoba-support value="read-aloud" type="checkbox"></label>
-      <label class="switch-row"><span>短い説明を希望する</span><input data-kotoba-support value="simple-text" type="checkbox"></label>
-      <h4>📊 熟練度・学習分析</h4>
-      <div id="adaptiveStats" class="settings-sub" aria-live="polite">まだ分析結果がありません。</div>
-      <button id="adaptiveReset" type="button" class="outline-button">学習分析だけリセット</button>
-      <p class="settings-sub">推定値は医学的な診断・重症度判定ではありません。学習済みの生成AIモデルは搭載していません。</p>
-    </div>
-
-    <div class="settings-panel" id="unifiedLearningPanel">
-      <h3>🧩 全ジャンル・ダンジョン・記録の学習連動（試験版）</h3>
-      <p class="settings-sub">既存のCPU自動難易度・習熟度分析を、発音練習・朗読想起・ことばダンジョンにもつなぎます。全て初期状態はOFFです。学習分析の値は診断ではありません。</p>
-      <label class="switch-row"><span>全ジャンルの学習分析を連動する</span><input id="unifiedAllGenres" type="checkbox"></label>
-      <label class="switch-row"><span>ことばダンジョンも連動する</span><input id="unifiedDungeon" type="checkbox"></label>
-      <label class="switch-row"><span>ことばダンジョンの結果をトレーニング記録に追加する</span><input id="unifiedRecords" type="checkbox"></label>
-      <label class="switch-row"><span>習熟度が低い場合にヒントを案内する</span><input id="unifiedHints" type="checkbox"></label>
-      <p class="settings-sub">難易度を自動で変更したい場合は、上の「CPU自動難易度調整」もONにしてください。利用者ごとの学習履歴は端末内に保存します。既存の記録・メダルは消しません。</p>
-      <p class="settings-sub" id="unifiedRestartNotice" role="status">設定変更は次回のアプリ起動から反映されます。</p>
-      <button id="unifiedRestartButton" type="button" class="outline-button">設定を保存後、アプリを再読み込み</button>
+    <div class="settings-panel" id="learningModePanel">
+      <h3>🧠 学習モード</h3>
+      <label class="switch-row"><span><strong>学習モード ON / OFF</strong></span><input id="learningModeEnabled" type="checkbox"></label>
+      <p id="learningModeStatus" class="settings-sub" role="status">読み込み中…</p>
+      <p class="settings-sub">ONの場合、全ジャンル・3D・ことばRPG・ダンジョンの正誤を分析し、苦手問題の復習とおすすめ難易度を案内します。OFFでも通常の練習やLv.1〜10の手動選択、記録の保存は利用できます。</p>
+      <p class="settings-sub">獲得済みの熟練度・レベル・メダル・記録は、ON/OFFを変更しても消えません。分析は参考値であり、医学的な診断ではありません。</p>
+      <button id="learningModeReload" type="button" class="outline-button" hidden>変更を反映してアプリを再読み込み</button>
     </div>
 
     <div class="settings-panel" id="handwritingSettingsPanel">
@@ -415,7 +415,6 @@
       <h3>⚙️ 練習の設定</h3>
       <label class="setting-select-row">問題数<select id="questionCount"><option value="5">5問</option><option value="10" selected>10問</option><option value="15">15問</option><option value="20">20問</option></select></label>
       <label class="switch-row"><span>ヒントを表示する（全ジャンル・ことばファンタジー・ことばクエスト・ダンジョン共通）</span><input id="hintOn" type="checkbox" checked></label>
-      <label class="switch-row"><span>音声を使う</span><input id="voiceOn" type="checkbox" checked></label>
     </div>
 
     <div class="settings-panel about-panel">
@@ -426,38 +425,36 @@
     </div>
   </section>
 
-  <audio id="bgmAudio" preload="auto" loop playsinline src="sounds/user-bgm.mp3"></audio>
+  <audio id="bgmAudio" preload="none" loop playsinline src="sounds/user-bgm.mp3"></audio>
 
 </main>
 <script src="encoding-safe.js"></script>
 <script src="android-bridge-android.js?v=beta91-audio"></script>
 <script src="audio-mixer-v86.js?v=91"></script>
 <script src="kotoba-sound-pack-v2.js?v=2"></script>
-<script src="adaptive-learning.js?v=veta1"></script>
+<script src="learning-mode-veta12.js?v=1"></script>
+<script src="adaptive-learning.js?v=veta12"></script>
 <script src="daily-streak.js?v=108"></script>
 <script src="event-message-sound.js?v=89"></script>
 <script src="offline-conversation-engine.js?v=91"></script>
-<script src="app.js?v=veta8-browser-integration"></script>
-<script src="user-profile.js?v=veta2"></script>
-<script src="unified-learning-veta1.js?v=veta2"></script>
+<script src="app.js?v=veta16-judgement"></script>
+<script src="user-profile.js?v=veta16-profile"></script>
+<script src="unified-learning-veta1.js?v=veta12"></script>
 <script src="aphasia-modes.js?v=veta2"></script>
-<script src="generative-ai-chat.js?v=104"></script>
+<script src="generative-ai-chat.js?v=veta16-answer-record"></script>
 <script src="ai-download-gate.js?v=99"></script>
-<script src="app-ui.js?v=beta91-audio"></script>
+<script src="app-ui.js?v=veta14-theme"></script>
 <script src="community-board.js"></script>
 <script src="reading-memory-mode.js?v=104"></script>
-<script src="ocr/browser-japanese-ocr.js?v=beta87-multipass-ocr"></script>
-<script src="ocr/kotoba-ink-shape.js?v=beta9-hybrid-ink"></script>
-<script src="ocr/kotoba-kanji-strokes-v92.js?v=92"></script>
-<script src="ocr/kotoba-ink-assist-v92.js?v=92"></script>
-<script src="ocr/kanjivg-style-guide.js?v=1"></script>
 <script src="copy-handwriting-bank-v2.js?v=jlect-choice-1"></script>
-<script src="ocr/kotoba-jlect-model.js?v=1"></script>
-<script src="ocr/kotoba-jlect-candidates.js?v=1"></script>
-<script src="v47-improvements.js?v=veta8-browser-integration"></script>
+<script src="v47-improvements.js?v=veta11-level100"></script>
 <script src="v57-task-rebuild.js?v=beta8-fixes"></script>
-<script src="pronunciation-training.js?v=veta2"></script>
+<script src="question-expansion-v10.js?v=veta10-20questions"></script>
+<script src="question-bank-veta11.js?v=100level1"></script>
+<script src="pronunciation-training.js?v=veta16-record-status"></script>
 <script src="kotoba-upgrades-v2.js?v=2"></script>
+<script src="difficulty-veta11.js?v=veta14-level-lock"></script>
+<script src="handwriting-lazy-veta12.js?v=1"></script>
 <script>
 (function(){
   'use strict';

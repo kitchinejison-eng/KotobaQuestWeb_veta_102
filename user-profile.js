@@ -7,6 +7,7 @@
   var STORAGE_KEY = 'kotobaquest_user_profile_v1';
   var returnTo = 'titleScreen';
   var setupMode = 'first';
+  var profileReturnTo = 'titleScreen';
   function $(id) { return document.getElementById(id); }
   function loadProfile() {
     try {
@@ -16,7 +17,8 @@
   }
   function hasProfile() {
     var p = loadProfile();
-    return !!(p && p.profileId && String(p.displayName || '').trim());
+    var name = String(p && p.displayName || '').trim();
+    return !!(p && p.profileId && p.profileId !== 'unconfigured' && name && name !== '未設定' && name !== '名前未登録');
   }
   function createId() {
     var date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
@@ -32,10 +34,10 @@
   }
   function getCurrent() {
     var p = loadProfile();
-    if (!p) return { profileId: 'unconfigured', displayName: '未設定', recordCode: '', createdAt: '', updatedAt: '' };
+    if (!p) return { profileId: 'unconfigured', displayName: '名前未登録', recordCode: '', createdAt: '', updatedAt: '' };
     return {
       profileId: String(p.profileId || 'unconfigured'),
-      displayName: String(p.displayName || '未設定'),
+      displayName: hasProfile() ? String(p.displayName) : '名前未登録',
       recordCode: String(p.recordCode || ''),
       createdAt: String(p.createdAt || ''),
       updatedAt: String(p.updatedAt || '')
@@ -57,13 +59,51 @@
     var records = $('recordsUserSummary');
     if (records) records.textContent = summary + '。新しい記録には、この設定を保存します。';
   }
-  function openSetup(mode) {
+  function getLocalData(key, fallback) {
+    try { var parsed = JSON.parse(localStorage.getItem(key) || 'null'); return parsed === null ? fallback : parsed; }
+    catch (e) { return fallback; }
+  }
+  function renderProfileView() {
+    var p = getCurrent();
+    var name = $('profileViewDisplayName');
+    var code = $('profileViewRecordCode');
+    var created = $('profileViewCreatedAt');
+    var count = $('profileViewTrainingCount');
+    var medals = $('profileViewMedalCount');
+    if (name) name.textContent = hasProfile() ? p.displayName : '名前未登録（初回設定で登録できます）';
+    if (code) code.textContent = p.recordCode || '登録なし（任意）';
+    if (created) {
+      var date = p.createdAt ? new Date(p.createdAt) : null;
+      created.textContent = date && !Number.isNaN(date.getTime()) ? date.toLocaleDateString('ja-JP') : '登録日なし';
+    }
+    var records = getLocalData('aphasiaTrainingRecordsV4', []);
+    if (count) count.textContent = (Array.isArray(records) ? records.length : 0) + '回';
+    var dungeon = getLocalData('kotobaDungeonSaveV1', {});
+    var medalCount = dungeon && Number.isFinite(Number(dungeon.medals)) ? Math.max(0, Math.floor(Number(dungeon.medals))) : 0;
+    if (medals) medals.textContent = medalCount + '枚';
+    var learningStatus = $('profileViewLearningMode');
+    if (learningStatus) learningStatus.textContent = window.KotobaLearningMode && window.KotobaLearningMode.isEnabled() ? 'ON' : 'OFF';
+    var analyzed = $('profileViewLearningCount');
+    if (analyzed) {
+      var key = 'kotobaquest_adaptive_v86_' + String(p.profileId || 'unconfigured').replace(/[^a-zA-Z0-9_-]/g,'').slice(0,50);
+      var analysis = getLocalData(key,{});
+      var skills = analysis && analysis.skills && typeof analysis.skills === 'object' ? analysis.skills : {};
+      var total = Object.keys(skills).reduce(function(sum,id){return sum + Math.max(0,Number(skills[id].total)||0);},0);
+      analyzed.textContent = total + '問';
+    }
+  }
+  function openProfileView(from) {
+    profileReturnTo = from === 'settings' ? 'settings' : 'titleScreen';
+    renderProfileView();
+    safeShow('userProfileView');
+  }
+  function openSetup(mode, backTo) {
     setupMode = mode === 'settings' ? 'settings' : 'first';
-    returnTo = setupMode === 'settings' ? 'settings' : 'titleScreen';
+    returnTo = setupMode === 'settings' ? (backTo === 'userProfileView' ? 'userProfileView' : 'settings') : 'titleScreen';
     var p = getCurrent();
     var nameInput = $('setupUserDisplayName');
     var codeInput = $('setupUserRecordCode');
-    if (nameInput) nameInput.value = hasProfile() && p.displayName !== '未設定' ? p.displayName : '';
+    if (nameInput) nameInput.value = hasProfile() && p.displayName !== '未設定' && p.displayName !== '名前未登録' ? p.displayName : '';
     if (codeInput) codeInput.value = p.recordCode || '';
     var heading = $('userSetupHeading');
     var intro = $('userSetupIntro');
@@ -74,8 +114,8 @@
     if (heading) heading.textContent = setupMode === 'settings' ? 'ユーザー設定を編集' : 'はじめてのユーザー設定';
     if (intro) intro.textContent = setupMode === 'settings'
       ? '記録用の表示名や管理番号を変更できます。新しい記録とExcel出力に反映されます。過去の記録には、実施時点の情報が残ります。'
-      : 'トレーニング記録やExcel出力に使う表示名を設定します。あとから「設定」画面で変更できます。';
-    if (saveBtn) saveBtn.textContent = setupMode === 'settings' ? '保存して設定へ戻る' : '設定を保存して始める';
+      : 'トレーニング記録やExcel出力に使う表示名を設定します。あとから「プロフィール」画面で変更できます。';
+    if (saveBtn) saveBtn.textContent = setupMode === 'settings' ? (returnTo === 'userProfileView' ? '保存してプロフィールへ戻る' : '保存して設定へ戻る') : '設定を保存して始める';
     if (guestBtn) guestBtn.hidden = setupMode !== 'first';
     if (cancelBtn) cancelBtn.hidden = setupMode !== 'settings';
     if (status) status.textContent = '';
@@ -90,7 +130,7 @@
     if (!name) return { ok: false, message: '記録に表示する名前を入力してください。' };
     var p = {
       version: 1,
-      profileId: old && old.profileId ? String(old.profileId) : createId(),
+      profileId: old && old.profileId && old.profileId !== 'unconfigured' ? String(old.profileId) : createId(),
       displayName: name,
       recordCode: code,
       createdAt: old && old.createdAt ? old.createdAt : now,
@@ -117,6 +157,7 @@
     }
     safeShow(returnTo);
     refreshSummaries();
+    if (returnTo === 'userProfileView') renderProfileView();
     if (setupMode === 'first') window.dispatchEvent(new Event('kotoba-profile-ready'));
   }
   function startAsGuest() {
@@ -128,7 +169,7 @@
     refreshSummaries();
     window.dispatchEvent(new Event('kotoba-profile-ready'));
   }
-  function cancelSetup() { safeShow('settings'); refreshSummaries(); }
+  function cancelSetup() { safeShow(returnTo); refreshSummaries(); if (returnTo === 'userProfileView') renderProfileView(); }
   function init() {
     var form = $('userProfileForm');
     if (form) form.addEventListener('submit', function (event) { event.preventDefault(); finishSetup(); });
@@ -138,6 +179,14 @@
     if (cancel) cancel.addEventListener('click', cancelSetup);
     var edit = $('editUserProfileBtn');
     if (edit) edit.addEventListener('click', function () { openSetup('settings'); });
+    var titleProfile = $('titleProfileBtn');
+    if (titleProfile) titleProfile.addEventListener('click', function () { openProfileView('titleScreen'); });
+    var settingsProfile = $('viewUserProfileBtn');
+    if (settingsProfile) settingsProfile.addEventListener('click', function () { openProfileView('settings'); });
+    var profileEdit = $('profileViewEditBtn');
+    if (profileEdit) profileEdit.addEventListener('click', function () { openSetup('settings', 'userProfileView'); });
+    var profileBack = $('profileViewBackBtn');
+    if (profileBack) profileBack.addEventListener('click', function () { safeShow(profileReturnTo); });
     var generate = $('generateUserRecordCodeBtn');
     if (generate) generate.addEventListener('click', function () {
       var field = $('setupUserRecordCode');
@@ -153,7 +202,14 @@
     getCurrent: getCurrent,
     hasProfile: hasProfile,
     openSetup: openSetup,
-    refreshSummaries: refreshSummaries
+    openProfileView: openProfileView,
+    refreshSummaries: refreshSummaries,
+    updateDisplayName: function (name) {
+      var current=getCurrent();
+      var result=persist(String(name||'').trim(),current.recordCode);
+      if(result.ok)window.dispatchEvent(new Event('kotoba-profile-updated'));
+      return result;
+    }
   };
   init();
 })();

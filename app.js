@@ -841,6 +841,22 @@ function speak(text, force) {
 // ------------------------------------------------------------
 // 6. 7ジャンルの選択画面
 // ------------------------------------------------------------
+var V14_CATEGORY_PREF_KEY = 'kotobaquest_genre_preferences_v14';
+function readGenrePreferences() {
+    try { var x = JSON.parse(localStorage.getItem(V14_CATEGORY_PREF_KEY) || '{}'); return x && typeof x === 'object' ? x : {}; } catch (_) { return {}; }
+}
+function genrePreferences(categoryId) {
+    var all = readGenrePreferences(), current = all[categoryId] || {};
+    var count = Number(current.count || ($('questionCount') && $('questionCount').value) || 10);
+    return { count: [5,10,15,20].indexOf(count)>=0 ? count : 10,
+        hints: typeof current.hints === 'boolean' ? current.hints : !($('hintOn') && !$('hintOn').checked) };
+}
+function saveGenrePreferences(categoryId) {
+    if (!categoryId) return;
+    var all = readGenrePreferences();
+    all[categoryId] = {count: Number($('genreQuestionCount').value), hints: !!$('genreHints').checked};
+    try {localStorage.setItem(V14_CATEGORY_PREF_KEY,JSON.stringify(all));} catch (_) {}
+}
 function renderCategories() {
     var grid = $("categoryGrid");
     if (!grid)
@@ -861,6 +877,7 @@ function renderCategories() {
             '<span class="category-name">' + escapeHtml(category.name) + '</span>' +
             '<span class="category-description">' + escapeHtml(category.description) + '</span>' +
             '<span class="category-needs" aria-label="関連する練習分野">' + trainingNeedBadges(categoryNeedIds(category)) + '</span>' +
+            (window.KotobaLevels ? '<span class="v11-genre-level">ジャンル Lv.' + window.KotobaLevels.genreLevel(category) + ' / 10</span>' : '') +
             '<span class="category-count">' + category.activities.length + 'つの課題</span>';
         button.addEventListener("click", function () { return selectCategory(category.id); });
         grid.appendChild(button);
@@ -870,7 +887,7 @@ function selectCategory(categoryId) {
     // ピクトグラム3Dクイズは独立した3Dゲーム画面で開きます。
     if (categoryId === "pictogram3d") {
         
-        window.location.href = "pictogram-3d.html?v=beta6-mobile-mic";
+        window.location.href = "pictogram-3d.html?v=veta11-level100";
         return;
     }
     // コトバ・ダンジョンは独立モードとして専用画面を開きます。
@@ -886,6 +903,9 @@ function selectCategory(categoryId) {
     if (icon) icon.textContent = selectedCategory.icon;
     if (name) name.textContent = selectedCategory.name;
     if (desc) desc.textContent = selectedCategory.description;
+    var genrePref = genrePreferences(selectedCategory.id);
+    if ($('genreQuestionCount')) $('genreQuestionCount').value = String(genrePref.count);
+    if ($('genreHints')) { $('genreHints').checked = genrePref.hints; $('genreHints').disabled = localStorage.getItem('kotobaquest_hints_v2') === '0'; }
     var panel = $("activityPanel"), grid = $("categoryGrid");
     if (panel) panel.classList.remove("hidden");
     if (grid) grid.style.display = "none";
@@ -898,10 +918,29 @@ function selectCategory(categoryId) {
             b.type="button";
             b.className="activity-card-native";
             var needInfo = TRAINING_ACTIVITY_NEEDS[id] || [[], ""];
+            var progress = window.KotobaLevels ? window.KotobaLevels.get(id) : null;
+            var suggestion = progress && window.KotobaLearningMode ? window.KotobaLearningMode.recommendation(id, progress.selected) : null;
             b.innerHTML='<span class="activity-card-icon">' + ((id === "localAIConversation" || id === "aiConversation") ? "🧠" : "▶") + '</span><span class="activity-card-text"><strong>' + escapeHtml(title) + '</strong><small>' + escapeHtml(description) + '</small>' +
+                (progress ? '<span class="v11-activity-level">達成 Lv.' + progress.unlocked + ' ／ 選択Lv.' + progress.selected + 'の熟練度 ' + progress.selectedMastery + '/100</span>' : '') +
+                (suggestion ? '<span class="v11-activity-level">🧠 学習分析：推定 ' + suggestion.estimate + '% ／ おすすめ Lv.' + suggestion.level + '</span>' : '') +
                 '<span class="activity-card-focus">練習すること：' + escapeHtml(needInfo[1]) + '</span><span class="activity-card-needs">' + trainingNeedBadges(needInfo[0]) + '</span></span><span class="activity-card-arrow">›</span>';
             b.addEventListener("click", function(){ startActivity(id); });
-            cards.appendChild(b);
+            if (progress) {
+                var row = document.createElement('div'); row.className = 'v11-activity-row';
+                var levelLabel = document.createElement('label'); levelLabel.className = 'v11-level-select';
+                levelLabel.textContent = '挑戦する難易度（解放済み）';
+                var levelSelect = document.createElement('select');
+                levelSelect.setAttribute('aria-label', title + ' の難易度');
+                for (var lv = 1; lv <= progress.unlocked; lv++) {
+                    var opt = document.createElement('option'); opt.value = String(lv);
+                    opt.textContent = 'Lv.' + lv;
+                    levelSelect.appendChild(opt);
+                }
+                levelSelect.value = String(progress.selected);
+                levelSelect.addEventListener('change', function() { window.KotobaLevels.select(id, Number(levelSelect.value)); });
+                levelLabel.appendChild(levelSelect); row.appendChild(b); row.appendChild(levelLabel);
+                cards.appendChild(row);
+            } else cards.appendChild(b);
         });
     }
     var select=$("activitySelect");
@@ -960,7 +999,7 @@ function startActivity(activityId) {
     if (activityId === "kotobaQuest") {
         selectedActivity = activityId;
         
-        window.location.href = "kotoba-quest-ud.html?v=104";
+        window.location.href = "kotoba-quest-ud.html?v=veta11-level100";
         return;
     }
     if (activityId === "readingMemory1" || activityId === "readingMemory2" || activityId === "readingMemory3" || activityId === "readingMemory") {
@@ -969,7 +1008,7 @@ function startActivity(activityId) {
             window.__readingMemoryMode.open(storyId);
         } else {
             
-            window.location.href = "reading-memory.html?story=" + encodeURIComponent(storyId) + "&v=104";
+            window.location.href = "reading-memory.html?story=" + encodeURIComponent(storyId) + "&v=veta11-level100";
         }
         return;
     }
@@ -989,22 +1028,28 @@ function startActivity(activityId) {
     if (activityId === "repeat") { repeatPracticeMode = "repeat"; repeatQuestionScored = false; }
     var genreEntry = GENRES.find(function (g) { return g.activities.some(function (a) { return a[0] === activityId; }); });
     selectedGenre = genreEntry || null;
-    hintEnabled = $("hintOn").checked;
-    voiceEnabled = $("voiceOn").checked;
+    var pref = selectedCategory ? genrePreferences(selectedCategory.id) : {count:Number($('questionCount').value),hints:!!$('hintOn').checked};
+    hintEnabled = pref.hints && localStorage.getItem('kotobaquest_hints_v2') !== '0';
+    // Automatic reading is controlled by the single global TTS setting.
+    voiceEnabled = !(window.KotobaAudio && !window.KotobaAudio.isTtsOn());
     var bank = activityId === "articulationNavigator"
         ? buildRandomArticulationQuiz()
         : (QUESTIONS[activityId] || []);
-    var count = Number($("questionCount").value);
+    var count = pref.count;
+    var levelSelected = window.KotobaLevels ? window.KotobaLevels.get(activityId).selected : 1;
+    var levelBank = window.KotobaLevels ? window.KotobaLevels.pool(bank, levelSelected) : bank;
     if (activityId === "aiConversation" || activityId === "localAIConversation") {
-        questions = shuffle(AI_CHAT_QUIZ_BANK).slice(0, 5).map(function (item, index) {
+        var aiLevelBank = window.KotobaLevels ? window.KotobaLevels.pool(AI_CHAT_QUIZ_BANK, levelSelected) : AI_CHAT_QUIZ_BANK;
+        questions = (window.KotobaLevels ? window.KotobaLevels.draw(aiLevelBank,activityId,levelSelected,5) : shuffle(aiLevelBank).slice(0,5)).map(function (item, index) {
             return Object.assign({}, item, {quizNumber:index + 1, quizTotal:5, voiceText:item.question, prompt:"AI会話クイズ：こたえを入力してください。正解すると自動で次へ進みます。"});
         });
     }
     else {
         // 構音ナビは設定画面の共通問題数に左右されず、毎回ランダム5問。
+        // Lv.1〜10 の手動選択を優先。従来の適応学習は回答履歴の分析を続ける。
         questions = activityId === "articulationNavigator" ? bank :
-            (window.KotobaAdaptive ? window.KotobaAdaptive.select(bank, activityId, Math.min(count, bank.length))
-                                   : shuffle(bank).slice(0, Math.min(count, bank.length)));
+            (window.KotobaLevels ? window.KotobaLevels.draw(levelBank,activityId,levelSelected,Math.min(count,levelBank.length))
+                                 : shuffle(levelBank).slice(0,Math.min(count,levelBank.length)));
     }
     current = 0;
     score = 0;
@@ -3513,6 +3558,15 @@ function questionImprovement(q) {
     if (selectedActivity === 'articulationNavigator' || (q && q.voiceText)) return 'お手本を聞いて、音を区切りながらゆっくり発音してみましょう。';
     return '問題文と正解をもう一度見比べ、どこが違ったか確認してから復習しましょう。';
 }
+// VETA16: 未回答・スキップ・未出題と採点結果を混同しない。
+// 旧記録の「未判定」は原データを改変せず、表示時だけわかりやすくする。
+function questionRecordStatus(item) {
+    if (!item) return '未回答';
+    if (item.status && item.status !== '未判定') return String(item.status);
+    if (item.correct === true) return '正解';
+    if (item.correct === false) return '不正解';
+    return item.skipped ? 'スキップ' : '未回答';
+}
 function recordQuestionOutcome(q, correct, given, options) {
     if (!q) return;
     var opts = options || {};
@@ -3531,6 +3585,10 @@ function recordQuestionOutcome(q, correct, given, options) {
         return;
     }
     questionResults.push(entry);
+    // Centralize evidence collection for *every* answer path: choices, voice,
+    // handwriting, aphasia activities and the V47 custom renderers. Only the
+    // first scored attempt for a question affects the probabilistic estimate.
+    if (window.KotobaAdaptive) window.KotobaAdaptive.recordAnswer(q, !!correct);
 }
 function showWrongAnswerGuide(q, targetId) {
     var host = $(targetId || 'feedback');
@@ -3553,7 +3611,6 @@ function answer(button, choice) {
     document.querySelectorAll(".token").forEach(function (b) { return b.disabled = true; });
     var correct = choice === q.answer;
     recordQuestionOutcome(q, correct, choice);
-    if (window.KotobaAdaptive) window.KotobaAdaptive.recordAnswer(q, correct);
     if (correct) {
         score++;
         button.classList.add("correct");
@@ -3600,8 +3657,9 @@ function nextQuestion() {
     // 構音ナビは問題形式。未回答では次に進めず、二重タップでも飛ばさない。
     if (selectedActivity === "articulationNavigator" && !answered) return;
     if (questions[current] && !questionResults.some(function (it) { return it.number === current + 1; })) {
+        var skipped = selectedActivity === 'articulationNavigator' && articulationSkippedIndexes.has(current);
         questionResults.push({number: current + 1, question: questionDisplayName(questions[current]),
-            given: '', answer: String(questions[current].answer || ''), correct: null, status: '未判定', improvement: ''});
+            given: '', answer: String(questions[current].answer || ''), correct: null, status: skipped ? 'スキップ' : '未回答', improvement: ''});
     }
     cancelArticulationAutoNext();
     // Release input focus before changing questions. Otherwise the mobile
@@ -3631,10 +3689,17 @@ function nextQuestion() {
         renderQuestion();
 }
 window.KotobaAIQuizBridge = {
-    correct: function () {
+    wrong: function (recognizedAnswer) {
+        if (selectedActivity !== "localAIConversation" && selectedActivity !== "aiConversation") return false;
+        if (answered || !questions[current]) return false;
+        recordQuestionOutcome(questions[current], false, recognizedAnswer, { answerMode: 'ai-quiz' });
+        return true;
+    },
+    correct: function (recognizedAnswer) {
         if (selectedActivity !== "localAIConversation" && selectedActivity !== "aiConversation") return false;
         if (answered) return false;
         answered = true;
+        recordQuestionOutcome(questions[current], true, recognizedAnswer, { answerMode: 'ai-quiz' });
         score++;
         aiConversationState.turnCount++;
         $("score").textContent = "正解 " + score;
@@ -3666,9 +3731,10 @@ function finishGame(gameOver) {
             improvement:writing.firstTryCorrect?'':questionImprovement(q),
             answerMode:writing.candidateSelected?'handwriting-candidate-choice':'',rawRecognized:String(writing.rawRecognized||'')};
         return found || {number:index + 1, question:questionDisplayName(q), answer:String(q.answer || ''),
-            given:'', correct:null, status:'未判定', improvement:''};
+            given:'', correct:null, status:gameOver ? '未出題' : '未回答', improvement:''};
     });
     var rate = Math.round(score / questions.length * 100);
+    var levelResult = window.KotobaLevels ? window.KotobaLevels.finish(selectedActivity, rate, !gameOver, questions.length) : null;
     var adaptiveSummary = window.KotobaAdaptive ? window.KotobaAdaptive.finish(
         selectedGenre ? selectedGenre.name : "", selectedActivity, score, questions.length) : null;
     var isClassicQuest = selectedActivity === "kotobaQuestClassic";
@@ -3704,12 +3770,29 @@ function finishGame(gameOver) {
                     rate >= 60 ? "よく取り組みました。もう一度挑戦してみましょう。" :
                         "お疲れさまでした。無理のないペースで取り組みましょう。";
     }
+    if (levelResult && !gameOver) {
+        $('resultMessage').textContent += '　Lv.' + levelResult.level + 'の熟練度：' + levelResult.points + '/100' + (levelResult.raised ? '。次のLv.' + levelResult.unlocked + 'を達成しました！' : '。');
+    }
+    var masteryPanel=$('v14MasteryResult');
+    if(masteryPanel) {
+        masteryPanel.hidden=!levelResult;
+        if(levelResult){
+            $('v14MasteryTitle').textContent='Lv.'+levelResult.level+' 熟練度';
+            $('v14MasteryText').textContent=levelResult.points+' / 100 （+'+levelResult.earned+'）';
+            $('v14MasteryBar').style.width=Math.min(100,Math.max(0,levelResult.points))+'%';
+            $('v14MasteryNext').textContent=levelResult.raised?'🎉 Lv.'+levelResult.unlocked+'が解放されました！':(levelResult.unlocked===10&&levelResult.points===100?'全レベル達成！':'次の解放まであと'+Math.max(0,100-levelResult.points)+'ポイント');
+        }
+    }
     saveTrainingRecord({
         finishedAt: new Date(),
         startedAt: activityStartedAt ? new Date(activityStartedAt) : new Date(),
         score: score,
         total: questions.length,
         rate: rate,
+        activityId: selectedActivity,
+        difficultyLevel: levelResult ? levelResult.level : 1,
+        masteryBefore: levelResult ? levelResult.before : 0,
+        masteryAfter: levelResult ? levelResult.points : 0,
         category: selectedCategory ? selectedCategory.name : "",
         genre: selectedGenre ? selectedGenre.name : "トレーニング",
         activity: getActivityName(selectedActivity),
@@ -3760,6 +3843,8 @@ function finishGame(gameOver) {
 (_b = $("startSelectedBtn")) === null || _b === void 0 ? void 0 : _b.addEventListener("click", function () { if (selectedActivity)
     startActivity(selectedActivity); });
 $("hintBtn").addEventListener("click", showHint);
+if ($('genreQuestionCount')) $('genreQuestionCount').addEventListener('change',function(){if(selectedCategory) saveGenrePreferences(selectedCategory.id);});
+if ($('genreHints')) $('genreHints').addEventListener('change',function(){if(selectedCategory) saveGenrePreferences(selectedCategory.id);});
 $("speakBtn").addEventListener("click", speakQuestion);
 $("nextBtn").addEventListener("click", nextQuestion);
 $("retryBtn").addEventListener("click", function () { return startActivity(selectedActivity); });
@@ -3873,27 +3958,30 @@ function getActiveUserProfile() {
             return window.KotobaQuestUserProfile.getCurrent();
         }
     } catch (_) { }
-    return { profileId: "unconfigured", displayName: "未設定", recordCode: "", createdAt: "", updatedAt: "" };
+    return { profileId: "unconfigured", displayName: "名前未登録", recordCode: "", createdAt: "", updatedAt: "" };
 }
 function getUserProfileExportSheet() {
     var p = getActiveUserProfile();
     return {
-        name: "ユーザー設定",
+        name: "プロフィール",
         rows: [
-            ["ユーザー設定｜トレーニング記録との関連情報"],
+            ["プロフィール｜トレーニング記録との関連情報"],
             ["項目", "内容"],
-            ["記録表示名", p.displayName || "未設定"],
-            ["利用者ID・管理番号", p.recordCode || "未設定"],
-            ["登録日", p.createdAt || "不明"],
+            ["記録表示名", p.displayName || "名前未登録"],
+            ["利用者ID・管理番号", p.recordCode || "登録なし（任意）"],
+            ["登録日", p.createdAt || "登録日なし"],
             ["最終更新日", p.updatedAt || "不明"],
             [],
             ["保存場所", "この端末のブラウザー内"],
-            ["注意", "ユーザー設定の導入前に作成された記録は、明細上でユーザー未設定と表示されます。"]
+            ["注意", "旧バージョンで名前を保存していない記録は『記録時の名前なし』と表示します。"]
         ],
         headerRows: [2], titleStyle: true, freezeRows: 2, widths: [26, 72]
     };
 }
-function userNameForRecord(r) { return r && r.userName ? r.userName : "未設定（過去記録）"; }
+function userNameForRecord(r) {
+    var name = String(r && r.userName || '').trim();
+    return name && name !== '未設定' && name !== '名前未登録' ? name : '記録時の名前なし';
+}
 function userCodeForRecord(r) { return r && r.userCode ? r.userCode : ""; }
 
 function saveTrainingRecord(data) {
@@ -3912,10 +4000,14 @@ function saveTrainingRecord(data) {
         score: Number(data.score || 0),
         total: Number(data.total || 0),
         rate: data.rate == null ? null : Number(data.rate || 0),
+        activityId: data.activityId || '',
+        difficultyLevel: Number(data.difficultyLevel || 1),
+        masteryBefore: Number(data.masteryBefore || 0),
+        masteryAfter: Number(data.masteryAfter || 0),
         kind: data.kind || "training",
         turns: Number(data.turns || 0),
         userProfileId: getActiveUserProfile().profileId || "unconfigured",
-        userName: getActiveUserProfile().displayName || "未設定",
+        userName: getActiveUserProfile().displayName || "名前未登録",
         userCode: getActiveUserProfile().recordCode || ""
     };
     if (data.articulation) record.articulation = data.articulation;
@@ -4109,12 +4201,13 @@ function renderSelectedDay() {
                           escapeHtml(item.group ? item.group + '・' : '') + escapeHtml(item.sound) + ' ' + (item.matched ? '✓' : (item.skipped ? 'スキップ' : (item.practiced ? '△' : '－'))) + '</span>';
                   }).join("") + '</div>' : '';
             row.innerHTML = '<div class="record-item-main"><strong>' + escapeHtml(r.genre) + '</strong><span>' +
-                escapeHtml(r.activity) + '</span>' + soundDetail + '</div><div class="record-item-meta"><span>' +
+                escapeHtml(r.activity) + '</span>' + (r.difficultyLevel ? '<span class="v11-activity-level">Lv.' + Number(r.difficultyLevel) + ' ／ 熟練度 ' + Number(r.masteryBefore||0) + ' → ' + Number(r.masteryAfter||0) + '/100</span>' : '') +
+                (r.adaptive && r.adaptive.estimatedMastery != null && Number.isFinite(Number(r.adaptive.estimatedMastery)) ? '<span class="v11-activity-level">🧠 学習分析の推定値 ' + Number(r.adaptive.estimatedMastery) + '%（参考）</span>' : '') + soundDetail + '</div><div class="record-item-meta"><span>' +
                 escapeHtml(r.time) + '</span><span>' + (r.writing ? '手書き '+Number(r.writing.attempted||0)+'問' : r.score + ' / ' + r.total + '問') + '</span><span>' +
                 (r.writing ? ('初回正解 '+Number(r.writing.firstTryCorrect||0)+'／一致 '+Number(r.writing.matched||0)+'／不一致 '+Number(r.writing.incorrect||0)) : formatTrainingRate(r.rate)) + '</span><span>' + durationText(r.durationSec) + '</span></div>';
             var details = Array.isArray(r.questionResults) ? r.questionResults : [];
             if (!details.length && r.articulation && Array.isArray(r.articulation.sounds)) details = r.articulation.sounds.map(function (s, index) {
-                return {number:index + 1, question:s.sound, answer:s.sound, status:s.matched?'正解':s.skipped?'未判定':'不正解', improvement:'お手本を聞いて、口の形と音を確認しましょう。'};
+                return {number:index + 1, question:s.sound, answer:s.sound, status:s.matched?'正解':s.skipped?'スキップ':'不正解', improvement:'お手本を聞いて、口の形と音を確認しましょう。'};
             });
             if (!details.length && r.writing && Array.isArray(r.writing.results)) details = r.writing.results.map(function (s, index) {
                 return {number:index + 1, question:s.target, answer:s.target, given:s.predicted,
@@ -4128,7 +4221,7 @@ function renderSelectedDay() {
                 expansion.appendChild(label);
                 details.forEach(function (it) {
                     var line = document.createElement('div'); line.className = 'record-question-line';
-                    var state = it.status || (it.correct === true?'正解':it.correct === false?'不正解':'未判定');
+                    var state = questionRecordStatus(it);
                     line.textContent = (it.number || '?') + '問目 ' + state + '｜' + (it.question || '問題') +
                         (it.answerMode === 'handwriting-candidate-choice'?'｜回答方法：認識候補から選択':'') +
                         (state === '正解'?'':'｜答え：' + (it.answer || '—') + (it.improvement ? '｜復習：' + it.improvement : ''));
@@ -4575,17 +4668,22 @@ function exportXlsx(name, sheets) {
     openTrainingPrintWindow(printHtml);
 }
 function buildQuestionDetailSheet(records) {
-    var rows = [['日付','時刻','課題','問題番号','出題内容','結果','正解','入力・認識','復習ポイント']];
+    var rows = [['日付','時刻','課題','難易度','問題番号','出題内容','結果','正解','入力・認識','復習ポイント']];
     (records || []).forEach(function (r) {
         var details = Array.isArray(r.questionResults) ? r.questionResults : [];
         details.forEach(function (item) {
-            rows.push([r.date, r.time, r.activity, item.number || '', item.question || '',
-                item.status || (item.correct === true ? '正解' : item.correct === false ? '不正解' : '未判定'),
+            rows.push([r.date, r.time, r.activity, 'Lv.' + (r.difficultyLevel || 1), item.number || '', item.question || '',
+                questionRecordStatus(item),
                 item.answer || '', item.given || '', item.improvement || '']);
         });
     });
     return {name:'問題別結果', rows:rows, headerRows:[1], freezeRows:1, autoFilter:true,
-        widths:[13,9,24,10,30,12,20,20,48]};
+        widths:[13,9,24,10,10,30,12,20,20,48]};
+}
+function trainingAnalysisForExport(record) {
+    if (!record || !record.adaptive || record.adaptive.estimatedMastery == null) return '—';
+    var score = Number(record.adaptive.estimatedMastery);
+    return Number.isFinite(score) ? String(Math.max(0, Math.min(100, score))) + '%' : '—';
 }
 function exportDayXlsx() {
     var key = selectedRecordDate, rs = getDayRecords(key), sum = calcDaySummary(rs), note = getDayNote(key);
@@ -4593,11 +4691,11 @@ function exportDayXlsx() {
         if (!confirm("".concat(japaneseDate(key), "\u306B\u306F\u8A18\u9332\u304C\u3042\u308A\u307E\u305B\u3093\u3002\u7A7A\u306EExcel\u3092\u4F5C\u6210\u3057\u307E\u3059\u304B\uFF1F")))
             return;
     }
-    var rows = [["ことばクエスト｜1日の記録"], ["日付", japaneseDate(key)], ["実施回数", sum.sessions, "問題数", sum.total, "正解数", sum.score, "平均正答率", formatTrainingRate(sum.rate)], ["時刻", "記録表示名", "利用者ID・管理番号", "ジャンル", "課題", "初回正解", "問題数", "初回正答率", "所要時間"]];
-    rs.forEach(function (r) { return rows.push([r.time, userNameForRecord(r), userCodeForRecord(r), r.genre, r.activity, r.score, r.total, formatTrainingRate(r.rate), durationText(r.durationSec)]); });
+    var rows = [["ことばクエスト｜1日の記録"], ["日付", japaneseDate(key)], ["実施回数", sum.sessions, "問題数", sum.total, "正解数", sum.score, "平均正答率", formatTrainingRate(sum.rate)], ["時刻", "記録表示名", "利用者ID・管理番号", "ジャンル", "課題", "難易度", "熟練度(前→後)", "学習推定(参考)", "初回正解", "問題数", "初回正答率", "所要時間"]];
+    rs.forEach(function (r) { return rows.push([r.time, userNameForRecord(r), userCodeForRecord(r), r.genre, r.activity, 'Lv.' + (r.difficultyLevel || 1), (r.masteryBefore || 0) + '→' + (r.masteryAfter || 0), trainingAnalysisForExport(r), r.score, r.total, formatTrainingRate(r.rate), durationText(r.durationSec)]); });
     rows.push([], ["メモ", note]);
     exportXlsx("\u3053\u3068\u3070\u30AF\u30A8\u30B9\u30C8_\u30C8\u30EC\u30FC\u30CB\u30F3\u30B0\u8A18\u9332_".concat(key, ".xlsx"), [
-        { name: "1日の記録", rows: rows, headerRows: [4], titleStyle: true, freezeRows: 4, widths: [9, 16, 15, 15, 22, 10, 9, 12, 12], autoFilter: true, autoFilterEndRow: Math.max(4, rows.length - 2) },
+        { name: "1日の記録", rows: rows, headerRows: [4], titleStyle: true, freezeRows: 4, widths: [9, 16, 15, 15, 22, 10, 16, 14, 10, 9, 12, 12], autoFilter: true, autoFilterEndRow: Math.max(4, rows.length - 2) },
         getUserProfileExportSheet(), buildQuestionDetailSheet(rs)
     ]);
 }
@@ -4611,13 +4709,13 @@ function exportMonthXlsx() {
     rs.forEach(function (r) { var _a; var _b; return ((_a = byDay[_b = r.date]) !== null && _a !== void 0 ? _a : (byDay[_b] = [])).push(r); });
     var summary = [["失語症トレーニング｜月間記録"], ["対象月", "".concat(recordMonth.getFullYear(), "\u5E74").concat(recordMonth.getMonth() + 1, "\u6708")], [], ["日付", "実施回数", "問題数", "正解数", "平均正答率", "実施時間(分)"]];
     Object.keys(byDay).sort().forEach(function (key) { var ss = calcDaySummary(byDay[key]); summary.push([key, ss.sessions, ss.total, ss.score, formatTrainingRate(ss.rate), ss.minutes]); });
-    var detail = [["日付", "時刻", "記録表示名", "利用者ID・管理番号", "ジャンル", "課題", "初回正解", "問題数", "初回正答率", "所要時間"]];
-    rs.slice().sort(function (a, b) { return a.finishedAt.localeCompare(b.finishedAt); }).forEach(function (r) { return detail.push([r.date, r.time, userNameForRecord(r), userCodeForRecord(r), r.genre, r.activity, r.score, r.total, formatTrainingRate(r.rate), durationText(r.durationSec)]); });
+    var detail = [["日付", "時刻", "記録表示名", "利用者ID・管理番号", "ジャンル", "課題", "難易度", "熟練度(前→後)", "学習推定(参考)", "初回正解", "問題数", "初回正答率", "所要時間"]];
+    rs.slice().sort(function (a, b) { return a.finishedAt.localeCompare(b.finishedAt); }).forEach(function (r) { return detail.push([r.date, r.time, userNameForRecord(r), userCodeForRecord(r), r.genre, r.activity, 'Lv.' + (r.difficultyLevel || 1), (r.masteryBefore || 0) + '→' + (r.masteryAfter || 0), trainingAnalysisForExport(r), r.score, r.total, formatTrainingRate(r.rate), durationText(r.durationSec)]); });
     var noteRows = [["日付", "メモ"]];
     Object.keys(notes).filter(function (k) { return k.startsWith(mk); }).sort().forEach(function (k) { return noteRows.push([k, notes[k]]); });
     exportXlsx("\u5931\u8A9E\u75C7\u30C8\u30EC\u30FC\u30CB\u30F3\u30B0_".concat(mk, ".xlsx"), [
         { name: "月間集計", rows: summary, headerRows: [4], titleStyle: true, freezeRows: 4, widths: [14, 12, 12, 12, 16, 16], autoFilter: true },
-        { name: "実施記録", rows: detail, headerRows: [1], freezeRows: 1, widths: [12, 8, 16, 15, 14, 21, 9, 9, 11, 9], autoFilter: true },
+        { name: "実施記録", rows: detail, headerRows: [1], freezeRows: 1, widths: [12, 8, 16, 15, 14, 21, 10, 16, 14, 9, 9, 11, 9], autoFilter: true },
         { name: "日別メモ", rows: noteRows, headerRows: [1], freezeRows: 1, widths: [12, 54], autoFilter: true },
         getUserProfileExportSheet(), buildQuestionDetailSheet(rs)
     ]);
@@ -4656,3 +4754,15 @@ function initRecordEvents() {
     });
 }
 initRecordEvents();
+// VETA15: 全体設定の問題数を3Dクイズなどの別画面にも引き継ぐ。
+(function persistGlobalQuestionCount() {
+    var field = $('questionCount');
+    if (!field) return;
+    try {
+        var saved = localStorage.getItem('kotobaquest_question_count_v15');
+        if (saved && ['5','10','15','20'].indexOf(saved) >= 0) field.value = saved;
+    } catch (_) {}
+    field.addEventListener('change', function () {
+        try { localStorage.setItem('kotobaquest_question_count_v15', field.value); } catch (_) {}
+    });
+})();

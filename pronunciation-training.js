@@ -52,7 +52,7 @@
         return window.KotobaQuestUserProfile.getCurrent();
       }
     } catch (e) {}
-    return { profileId: 'unconfigured', displayName: '未設定', recordCode: '' };
+    return { profileId: 'unconfigured', displayName: '名前未登録', recordCode: '' };
   }
   function esc(value) {
     return safeText(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -195,6 +195,25 @@
     var bank = [];
     LEGACY_SPECS.forEach(function (spec) { var q = makeLegacy(spec); if (q) bank.push(q); });
     NEW_EXERCISES.forEach(function (q) { bank.push(q); });
+    // VETA11: 100 phonetic/reading practice items with genuine varied targets.
+    (window.KotobaV11Words || []).forEach(function (item, i) {
+      var target = item.level >= 6 ? item.sentence : item.word;
+      var first=Array.from(item.word)[0]||'';
+      var place=[],manner=[];
+      if (/[ぱぴぷぺぽばびぶべぼまみむめも]/.test(first)) {place=['bilabial'];manner=/[まみむめも]/.test(first)?['nasal']:['plosive'];}
+      else if (/[かきくけこがぎぐげご]/.test(first)) {place=['velar'];manner=['plosive'];}
+      else if (/[しちじ]/.test(first)) {place=['alveoloPalatal'];manner=['fricative','affricate'];}
+      else if (/[たてとなにぬねのさすせそらりるれろつ]/.test(first)) {place=['alveolar'];manner=['plosive','fricative','tap'];}
+      else if (/[やゆよひ]/.test(first)) {place=['palatal'];manner=['approximant'];}
+      else if (/[はへほ]/.test(first)) {place=['glottal'];manner=['fricative'];}
+      else if (/[あいうえお]/.test(first)) {place=['vowelSpecial'];manner=['other'];}
+      bank.push({id:'veta11_pronunciation_'+(i+1),origin:'VETA11追加',
+        type:'self',format:item.level >= 6 ? 'sentence' : 'word',
+        difficultyLevel:item.level,
+        prompt:item.level >= 6 ? '文の切れ目と音のつながりを意識して読みましょう。' : '一つずつ、音をはっきり聞いてから発音しましょう。',
+        display:target,target:target,audioText:target,
+        place:place,manner:manner,reviewNote:'自分のペースで繰り返してください。'});
+    });
     return bank;
   }
 
@@ -248,17 +267,21 @@
   function beginSession(filter) {
     activeFilter = filter || null;
     var pool = categoriesFor(activeFilter);
+    var practiceLevel = window.KotobaLevels ? window.KotobaLevels.get('pronunciationTraining').selected : 1;
+    if (window.KotobaLevels) pool = window.KotobaLevels.pool(pool, practiceLevel);
     if (!pool.length) {
       activeTab = activeFilter && activeFilter.kind === 'review' ? 'review' : 'places';
       renderHome();
       return;
     }
     var unified = window.KotobaUnifiedLearning;
-    var learningActivity = 'pronunciation-' + (activeFilter ? activeFilter.kind + '-' + activeFilter.id : 'all');
+    // One analysis history per training task; the existing category metrics
+    // still retain separate place/manner/review breakdowns.
+    var learningActivity = 'pronunciationTraining';
     var chosen = unified && unified.isEnabledFor('genres')
       ? unified.select('genres', pool, learningActivity, Math.min(5, pool.length))
       : shuffleList(pool).slice(0, Math.min(5, pool.length));
-    session = { filter: activeFilter, items: chosen, index: 0, correct: 0, incorrect: 0, answered: 0, answers: [], categoryIds: [], startedAt: Date.now(), learningActivity: learningActivity };
+    session = { filter: activeFilter, items: chosen, index: 0, correct: 0, incorrect: 0, answered: 0, answers: [], categoryIds: [], startedAt: Date.now(), learningActivity: learningActivity, difficultyLevel:practiceLevel };
     if (unified) unified.begin('genres', '発音・発声トレーニング', learningActivity);
     chosen.forEach(function (q) { session.categoryIds = session.categoryIds.concat(q.place || [], q.manner || []); });
     session.categoryIds = uniq(session.categoryIds);
@@ -327,7 +350,7 @@
     var history = state.history.slice(-8).reverse();
     var micHistory = (state.practiceLog || []).slice(-15).reverse();
     var profile = currentUserProfile();
-    return '<section class="pt-section"><h2>達成度・結果</h2><p class="pt-lead">記録対象：' + esc(profile.displayName || '未設定') + (profile.recordCode ? ' ／ 管理番号：' + esc(profile.recordCode) : '') + '<br>正解率＝正解数÷回答数×100。マイク回答や選択問題の結果は、発音トレーニングの達成度と共通のトレーニング記録に連動して保存されます。</p>' +
+    return '<section class="pt-section"><h2>達成度・結果</h2><p class="pt-lead">記録対象：' + esc(profile.displayName || '名前未登録') + (profile.recordCode ? ' ／ 管理番号：' + esc(profile.recordCode) : '') + '<br>正解率＝正解数÷回答数×100。マイク回答や選択問題の結果は、発音トレーニングの達成度と共通のトレーニング記録に連動して保存されます。</p>' +
       '<h3 class="pt-subheading">発音する場所別</h3><div class="pt-progress-table">' + tableRows(PLACE_CATEGORIES, 'place') + '</div>' +
       '<h3 class="pt-subheading">発音の仕方別</h3><div class="pt-progress-table">' + tableRows(MANNER_CATEGORIES, 'manner') + '</div>' +
       '<h3 class="pt-subheading">最近の練習履歴</h3>' + (history.length ? '<div class="pt-history-list">' + history.map(function (h) { return '<div class="pt-history-row"><span>' + esc(h.date) + '</span><strong>' + esc(h.label) + '</strong><span>' + h.correct + '/' + h.total + '（' + h.pct + '%）</span></div>' + (h.items && h.items.length ? '<div class="pt-history-detail">取り組んだ問題：' + h.items.map(function (it) { return esc(it.label) + (it.correct ? '（できた）' : '（復習）'); }).join('、') + '</div>' : ''); }).join('') + '</div>' : '<div class="pt-empty"><p>練習を完了すると、ここに履歴が残ります。</p></div>') +
@@ -462,7 +485,7 @@
     var label = q.display || q.target || q.prompt || q.audioText || q.answer || q.id;
     var expected = q.target || q.audioText || q.display || '';
     var profile = currentUserProfile();
-    var entry = { date: new Date().toISOString(), id: q.id, item: safeText(label), origin: safeText(q.origin || ''), transcript: '', kind: answerMode ? 'microphone-answer' : 'microphone', userProfileId: profile.profileId || 'unconfigured', userName: profile.displayName || '未設定', userCode: profile.recordCode || '' };
+    var entry = { date: new Date().toISOString(), id: q.id, item: safeText(label), origin: safeText(q.origin || ''), transcript: '', kind: answerMode ? 'microphone-answer' : 'microphone', userProfileId: profile.profileId || 'unconfigured', userName: profile.displayName || '名前未登録', userCode: profile.recordCode || '' };
     state.practiceLog.push(entry);
     if (state.practiceLog.length > 200) state.practiceLog = state.practiceLog.slice(-200);
     var im = itemMetric(q.id); im.micAttempts = (im.micAttempts || 0) + 1; im.label = safeText(label); im.origin = safeText(q.origin || '');
@@ -547,7 +570,8 @@
     // 自己評価は自動的な習熟度推定に混ぜない。選択式など客観的に判定できる問題だけ記録する。
     if (!isSelf && window.KotobaUnifiedLearning) {
       window.KotobaUnifiedLearning.recordAnswer('genres', {
-        id: q.id, prompt: q.prompt || q.display || q.target, answer: q.answer, choices: q.choices
+        id: q.id, prompt: q.prompt || q.display || q.target, answer: q.answer,
+        choices: q.choices, difficultyLevel: q.difficultyLevel || session.difficultyLevel || 1
       }, correct);
     }
     var im = itemMetric(q.id); im.attempts += 1; im.label = safeText(q.display || q.target || q.prompt || q.audioText || q.id); im.origin = safeText(q.origin || ''); im.lastResult = correct ? '正解・できた' : '不正解・復習'; if (correct) im.correct += 1; else im.incorrect += 1;
@@ -580,6 +604,10 @@
   }
   function saveSharedTrainingRecord(s, label, total, value, finishedAt, adaptiveSummary) {
     if (!s || s.sharedRecordSaved) return !!(s && s.sharedRecordSaved);
+    if (window.KotobaLevels && !s.levelSaved) {
+      s.masteryResult = window.KotobaLevels.finish('pronunciationTraining',value,true,total);
+      s.levelSaved = true;
+    }
     var finished = finishedAt instanceof Date ? finishedAt : new Date(finishedAt || Date.now());
     var started = new Date(s.startedAt || finished.getTime());
     var data = {
@@ -588,6 +616,10 @@
       score: Number(s.correct || 0),
       total: Number(total || 0),
       rate: Number(value || 0),
+      activityId:'pronunciationTraining',
+      difficultyLevel:s.difficultyLevel || 1,
+      masteryBefore:s.masteryResult ? s.masteryResult.before : 0,
+      masteryAfter:s.masteryResult ? s.masteryResult.points : 0,
       category: '発音トレーニング',
       genre: '発音トレーニング',
       activity: String(label || '発音トレーニング'),
@@ -601,7 +633,7 @@
       return {number:index + 1, question:String(q.display || q.target || q.prompt || q.id || ''),
         given:response && !response.isSelf ? String(response.answer || '') : '',
         answer:String(q.answer || q.target || ''), correct:correct,
-        status:correct === null?'未判定':correct?'正解':'不正解',
+        status:correct === null?'未回答':correct?'正解':'不正解',
         improvement:correct === false?'お手本を聞いて、音の区切りや発音を確かめてみましょう。':''};
     });
     if (adaptiveSummary) data.adaptive = adaptiveSummary;
@@ -625,7 +657,7 @@
         category: data.category, genre: data.genre, activity: data.activity,
         score: data.score, total: data.total, rate: data.rate, kind: data.kind, turns: 0,
         userProfileId: currentUserProfile().profileId || 'unconfigured',
-        userName: currentUserProfile().displayName || '未設定',
+        userName: currentUserProfile().displayName || '名前未登録',
         userCode: currentUserProfile().recordCode || ''
       };
       if (adaptiveSummary) sharedEntry.adaptive = adaptiveSummary;
@@ -658,7 +690,7 @@
     var now = new Date();
     var date = now.getFullYear() + '/' + ('0' + (now.getMonth()+1)).slice(-2) + '/' + ('0' + now.getDate()).slice(-2) + ' ' + ('0' + now.getHours()).slice(-2) + ':' + ('0' + now.getMinutes()).slice(-2);
     var profile = currentUserProfile();
-    state.history.push({ date: date, label: label, correct: s.correct, total: total, pct: value, userProfileId: profile.profileId || 'unconfigured', userName: profile.displayName || '未設定', userCode: profile.recordCode || '', items: s.answers.map(function (a) { var q = s.items.filter(function (x) { return x.id === a.id; })[0]; return { id: a.id, label: q ? safeText(q.display || q.target || q.prompt || q.id) : a.id, origin: q ? safeText(q.origin || '') : '', correct: !!a.correct, micAttempts: (state.items[a.id] && state.items[a.id].micAttempts) || 0 }; }) });
+    state.history.push({ date: date, label: label, correct: s.correct, total: total, pct: value, userProfileId: profile.profileId || 'unconfigured', userName: profile.displayName || '名前未登録', userCode: profile.recordCode || '', items: s.answers.map(function (a) { var q = s.items.filter(function (x) { return x.id === a.id; })[0]; return { id: a.id, label: q ? safeText(q.display || q.target || q.prompt || q.id) : a.id, origin: q ? safeText(q.origin || '') : '', correct: !!a.correct, micAttempts: (state.items[a.id] && state.items[a.id].micAttempts) || 0 }; }) });
     if (state.history.length > 50) state.history = state.history.slice(-50);
     saveState();
     var adaptiveSummary = null;

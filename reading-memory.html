@@ -260,9 +260,11 @@
     </footer>
 
     <script src="daily-streak.js?v=108"></script>
-    <script src="user-profile.js?v=69"></script>
-    <script src="adaptive-learning.js?v=veta1"></script>
-    <script src="unified-learning-veta1.js?v=1"></script>
+    <script src="user-profile.js?v=veta16-profile"></script>
+    <script src="learning-mode-veta12.js?v=1"></script>
+    <script src="difficulty-veta11.js?v=1"></script>
+    <script src="adaptive-learning.js?v=veta12"></script>
+    <script src="unified-learning-veta1.js?v=veta12"></script>
     <script>
         // 朗読・想起クイズは「課題ごとに独立」して動作します。
         // URL: reading-memory.html?story=1 / 2 / 3
@@ -345,8 +347,132 @@
             }
         };
 
+        // VETA10：各おはなしの内容に即した問題候補を5問→20問に拡張。
+        // 1回の負担を増やさないよう、毎回ランダムに5問を選びます。
+        STORIES["1"].quiz.push(
+            { q: "ふたりは、森へ遠足に出かけました。", a: true, exp: "〇：ふたりが出かけた先は森です。" },
+            { q: "ふたりは、大きなリュックにおにぎりを詰めました。", a: true, exp: "〇：出発するとき、大きなリュックにおにぎりを入れました。" },
+            { q: "リュックに詰めた食べ物は、サンドイッチでした。", a: false, exp: "×：持って行ったのは、おにぎりです。" },
+            { q: "かぼちゃおじいさんのおにぎりには、こんぶが入っていました。", a: false, exp: "×：かぼちゃおじいさんの具は、うめぼしです。" },
+            { q: "うめぼしは、すっぱい味がしました。", a: true, exp: "〇：おはなしには、うめぼしがすっぱいと書かれています。" },
+            { q: "かぼちゃおじいさんは、うめぼしを食べると元気が出ると感じました。", a: true, exp: "〇：すっぱいけれど、元気が出ると書かれています。" },
+            { q: "わかめおじいさんのおにぎりの具は、こんぶでした。", a: true, exp: "〇：わかめおじいさんの具は、こんぶです。" },
+            { q: "わかめおじいさんのおにぎりは、甘いチョコレート味でした。", a: false, exp: "×：具は香ばしいこんぶです。" },
+            { q: "こんぶのたれは、ごはんにしみていました。", a: true, exp: "〇：こんぶのたれがごはんによくしみていました。" },
+            { q: "ふたりは、低い地下室でおにぎりを食べました。", a: false, exp: "×：ふたりは、高いおかの上で食べました。" },
+            { q: "ふたりは、おかの上で風を感じました。", a: true, exp: "〇：高いおかの上で、風を感じながら食べました。" },
+            { q: "ふたりは、レストランの席でおにぎりを食べました。", a: false, exp: "×：食べた場所は、おかの上です。" },
+            { q: "おにぎりは、たけのこの皮から取り出しました。", a: true, exp: "〇：たけのこの皮から出して食べました。" },
+            { q: "おにぎりは、木の箱から取り出しました。", a: false, exp: "×：おにぎりは、たけのこの皮から出しました。" },
+            { q: "ふたりは、おにぎりをおいしく食べました。", a: true, exp: "〇：おはなしには、美味しく食べたと書かれています。" }
+        );
+        STORIES["2"].quiz.push(
+            { q: "しらす爺さんの旅行の季節は秋でした。", a: true, exp: "〇：秋の日に温泉へ出かけました。" },
+            { q: "旅行先は北海道の温泉でした。", a: false, exp: "×：旅行先は熱海です。" },
+            { q: "しらす爺さんは熱海へ行きました。", a: true, exp: "〇：熱海の温泉を訪れました。" },
+            { q: "行きの乗り物は電車でした。", a: true, exp: "〇：行きの電車の中で食べ物を食べました。" },
+            { q: "しらす爺さんは電車で、しらす煎餅を食べました。", a: false, exp: "×：このおはなしでは、あんパンを食べました。" },
+            { q: "電車で食べたあんパンは、しらす爺さんの好きな食べ物でした。", a: true, exp: "〇：大好きなあんパンと書かれています。" },
+            { q: "旅館に着いてすぐ、まず買い物へ行きました。", a: false, exp: "×：旅館に着いて、まず温泉に入りました。" },
+            { q: "旅館では、温かい温泉に入りました。", a: true, exp: "〇：温かい温泉に入って過ごしました。" },
+            { q: "温泉では、のんびり過ごしました。", a: true, exp: "〇：温泉に入って、のんびりしました。" },
+            { q: "夕食には新鮮なお刺身が出ました。", a: true, exp: "〇：夕食はお刺身と金目鯛の煮付けでした。" },
+            { q: "夕食には、金目鯛の煮付けもありました。", a: true, exp: "〇：金目鯛の煮付けを食べました。" },
+            { q: "しらす爺さんは夕食に満足できませんでした。", a: false, exp: "×：夕食に大満足したと書かれています。" },
+            { q: "夜は、固い床の上で眠りました。", a: false, exp: "×：ふかふかのお布団で眠りました。" },
+            { q: "夜に眠った場所は、ふかふかのお布団でした。", a: true, exp: "〇：ふかふかのお布団で寝ました。" },
+            { q: "しらす爺さんは、夜中ずっと起きていました。", a: false, exp: "×：朝までぐっすり眠りました。" }
+        );
+        STORIES["3"].quiz.push(
+            { q: "しらすお爺さんは、秋の日に出かけました。", a: true, exp: "〇：季節は秋です。" },
+            { q: "しらすお爺さんの旅行先は熱海でした。", a: true, exp: "〇：熱海の温泉へ出かけました。" },
+            { q: "しらすお爺さんは、冬にスキー旅行へ出かけました。", a: false, exp: "×：秋の日の温泉旅行です。" },
+            { q: "行きの電車で食べたのは、しらす煎餅でした。", a: true, exp: "〇：大好きなしらす煎餅を食べました。" },
+            { q: "しらす煎餅は、電車に乗る前に食べ終えました。", a: false, exp: "×：おはなしでは、行きの電車で食べています。" },
+            { q: "しらすお爺さんは、しらす煎餅が大好きでした。", a: true, exp: "〇：大好きなしらす煎餅と書かれています。" },
+            { q: "旅館に着くと、すぐに温泉に入りました。", a: true, exp: "〇：旅館では、まず温泉に入りました。" },
+            { q: "旅館の温泉は、冷たい水のお風呂でした。", a: false, exp: "×：温かい温泉です。" },
+            { q: "温泉では、ゆっくりくつろぎました。", a: true, exp: "〇：のんびり過ごしました。" },
+            { q: "夕食には新鮮なお刺身が出ました。", a: true, exp: "〇：夕食にお刺身を食べました。" },
+            { q: "夕食には金目鯛の煮付けがありました。", a: true, exp: "〇：お刺身と金目鯛の煮付けが夕食でした。" },
+            { q: "夕食には、お刺身ではなくカレーだけを食べました。", a: false, exp: "×：夕食はお刺身と金目鯛の煮付けです。" },
+            { q: "しらすお爺さんは、夕食を食べて大満足しました。", a: true, exp: "〇：食事に大満足したと書かれています。" },
+            { q: "夜は、ふかふかのお布団に入りました。", a: true, exp: "〇：ふかふかのお布団で眠りました。" },
+            { q: "夜は一睡もできませんでした。", a: false, exp: "×：朝までぐっすり眠りました。" }
+        );
+
+        // VETA11: 読み聞かせ本文に書かれた事実と、因果・順序を照らし合わせる追加45問。
+        // 同じ物語の説明と矛盾する内容は、不正解として出題する。
+        STORIES['1'].quiz.push(
+            {q:'遠足に出かけたのは、かぼちゃおじいさん一人だけでした。',a:false,exp:'×：わかめおじいさんも一緒でした。'},
+            {q:'ふたりは遠足のお弁当におにぎりを選びました。',a:true,exp:'〇：リュックにおにぎりを詰めました。'},
+            {q:'リュックは小さかったので、おにぎりを入れられませんでした。',a:false,exp:'×：大きなリュックにおにぎりを入れました。'},
+            {q:'かぼちゃおじいさんとわかめおじいさんでは、おにぎりの具が違いました。',a:true,exp:'〇：うめぼしとこんぶで違いました。'},
+            {q:'かぼちゃおじいさんのおにぎりの具は、甘いジャムでした。',a:false,exp:'×：赤いうめぼしでした。'},
+            {q:'わかめおじいさんは、こんぶのおにぎりを持っていきました。',a:true,exp:'〇：わかめおじいさんの具はこんぶです。'},
+            {q:'ふたりが食べたとき、風が吹いていました。',a:true,exp:'〇：おかの上で風を感じました。'},
+            {q:'遠足の目的地は、海辺の砂浜でした。',a:false,exp:'×：森へ出かけました。'},
+            {q:'おにぎりを食べた場所は森の中の高いおかでした。',a:true,exp:'〇：高いおかの上で食べました。'},
+            {q:'こんぶのたれは、ごはんにほとんどついていませんでした。',a:false,exp:'×：ごはんによくしみていました。'},
+            {q:'うめぼしは酸っぱく、元気が出る具として紹介されました。',a:true,exp:'〇：そのように説明されています。'},
+            {q:'ふたりは食べる前に、たけのこの皮からおにぎりを取り出しました。',a:true,exp:'〇：包みから出して食べました。'},
+            {q:'こんぶのおにぎりを用意したのは、かぼちゃおじいさんでした。',a:false,exp:'×：こんぶはわかめおじいさんのおにぎりです。'},
+            {q:'ふたりはおにぎりの味に満足しました。',a:true,exp:'〇：美味しく食べたと書かれています。'},
+            {q:'おにぎりを食べたとき、ふたりは屋内のレストランにいました。',a:false,exp:'×：高いおかの上で食べました。'}
+        );
+        STORIES['2'].quiz.push(
+            {q:'熱海へ行ったのは秋のある日でした。',a:true,exp:'〇：秋の日に出かけました。'},
+            {q:'しらす爺さんは旅行で列車を使いませんでした。',a:false,exp:'×：行きの電車であんパンを食べました。'},
+            {q:'電車に乗っている間に好きな食べ物を食べました。',a:true,exp:'〇：あんパンを食べています。'},
+            {q:'このおはなしで電車のおやつは、しらす煎餅でした。',a:false,exp:'×：このおはなしでは、あんパンです。'},
+            {q:'宿泊した旅館では、温泉に入りました。',a:true,exp:'〇：到着後に温泉へ入りました。'},
+            {q:'旅館に着いた直後に、まず夕食を食べました。',a:false,exp:'×：まず温泉に入りました。'},
+            {q:'しらす爺さんは、温泉でゆったり過ごしました。',a:true,exp:'〇：のんびり過ごしました。'},
+            {q:'夕食は刺身と金目鯛の煮付けでした。',a:true,exp:'〇：二つの料理が出ました。'},
+            {q:'金目鯛は煮付けではなく、必ず焼き魚でした。',a:false,exp:'×：金目鯛の煮付けでした。'},
+            {q:'夕食について、しらす爺さんは大満足でした。',a:true,exp:'〇：大満足と書かれています。'},
+            {q:'旅館で眠ったのは、硬いベンチの上でした。',a:false,exp:'×：ふかふかのお布団です。'},
+            {q:'しらす爺さんは夜、布団で眠りました。',a:true,exp:'〇：お布団で眠りました。'},
+            {q:'朝まで眠らず、温泉で過ごし続けました。',a:false,exp:'×：夜はぐっすり眠りました。'},
+            {q:'旅行の行き先と温泉に入った場所は、熱海でした。',a:true,exp:'〇：熱海の温泉旅行です。'},
+            {q:'この旅行は暑い夏の海水浴が目的でした。',a:false,exp:'×：秋の日の温泉旅行です。'}
+        );
+        STORIES['3'].quiz.push(
+            {q:'このおはなしは秋の旅行について書かれています。',a:true,exp:'〇：秋の日に熱海へ行きました。'},
+            {q:'しらす爺さんは熱海ではなく、札幌の雪祭りへ行きました。',a:false,exp:'×：熱海の温泉へ出かけました。'},
+            {q:'行きの電車でおやつを食べました。',a:true,exp:'〇：しらす煎餅を食べました。'},
+            {q:'電車のおやつは、しらす煎餅でした。',a:true,exp:'〇：大好きなしらす煎餅でした。'},
+            {q:'電車で食べたのは、あんパンだけでした。',a:false,exp:'×：このおはなしでは、しらす煎餅です。'},
+            {q:'しらす煎餅は、しらす爺さんの好きな食べ物でした。',a:true,exp:'〇：大好きと書かれています。'},
+            {q:'旅館では最初に温泉に入りました。',a:true,exp:'〇：旅館に着くと、まず温泉へ入りました。'},
+            {q:'旅館に着いても、温泉には一度も入りませんでした。',a:false,exp:'×：温かい温泉に入りました。'},
+            {q:'しらす爺さんは旅館でのんびりしました。',a:true,exp:'〇：温泉でのんびり過ごしました。'},
+            {q:'夕食には新鮮なお刺身がありました。',a:true,exp:'〇：お刺身が出ています。'},
+            {q:'夕食には金目鯛の煮付けもありました。',a:true,exp:'〇：金目鯛の煮付けです。'},
+            {q:'夕食の料理は、しらす煎餅一皿だけでした。',a:false,exp:'×：夕食はお刺身と金目鯛の煮付けです。'},
+            {q:'夕食後は満足して過ごせました。',a:true,exp:'〇：夕食に大満足しました。'},
+            {q:'夜にはふかふかのお布団で眠りました。',a:true,exp:'〇：ふかふかのお布団です。'},
+            {q:'旅行中は夜通し寝られませんでした。',a:false,exp:'×：朝までぐっすり眠りました。'}
+        );
+
+        Object.keys(STORIES).forEach(function (storyId) {
+            STORIES[storyId].quiz.forEach(function (q,i) {
+                q.difficultyLevel = Math.min(10,Math.floor(i / Math.max(1,STORIES[storyId].quiz.length / 10)) + 1);
+            });
+        });
+
         var currentStory = STORIES[STORY_ID] || STORIES["1"];
-        var quizData = currentStory.quiz;
+        var readingActivityId = 'readingMemory' + (['1','2','3'].indexOf(STORY_ID)>=0?STORY_ID:'1');
+        function selectRandomStoryQuestions(allQuestions, count) {
+            var selectedLevel = window.KotobaLevels ? window.KotobaLevels.get(readingActivityId).selected : 1;
+            var pool = window.KotobaLevels ? window.KotobaLevels.pool(allQuestions,selectedLevel) : allQuestions.slice();
+            for (var i = pool.length - 1; i > 0; i--) {
+                var j = Math.floor(Math.random() * (i + 1));
+                var temp = pool[i]; pool[i] = pool[j]; pool[j] = temp;
+            }
+            return pool.slice(0, count);
+        }
+        var quizData = selectRandomStoryQuestions(currentStory.quiz, 5);
         var currentQuestionIndex = 0;
         var score = 0;
         var answered = false;
@@ -447,7 +573,7 @@
             if(!quizLearningStarted && currentQuestionIndex===0){
                 quizLearningStarted=true;
                 quizStartedAt=Date.now();
-                if(window.KotobaUnifiedLearning) window.KotobaUnifiedLearning.begin('genres','認知・理解トレーニング','reading-memory-'+STORY_ID);
+                if(window.KotobaUnifiedLearning) window.KotobaUnifiedLearning.begin('genres','朗読・記憶トレーニング',readingActivityId);
             }
             answered=false;
             var q=quizData[currentQuestionIndex];
@@ -472,8 +598,9 @@
             var isCorrect=(userAnswer===currentQ.a);
             if(isCorrect) score++;
             if(window.KotobaUnifiedLearning) window.KotobaUnifiedLearning.recordAnswer('genres',{
-                id:'reading-memory-'+STORY_ID+'-'+currentQuestionIndex,
-                prompt:currentQ.q, answer:String(currentQ.a), choices:['〇','×']
+                id:'reading-memory-'+STORY_ID+'-'+String(currentQ.q||''),
+                prompt:currentQ.q, answer:String(currentQ.a), choices:['〇','×'],
+                difficultyLevel:currentQ.difficultyLevel || 1
             },isCorrect);
             quizHistory.push({index:currentQuestionIndex+1, q:currentQ.q, user:userAnswer?'〇（ただしい）':'✕（ちがう）', correct:currentQ.a?'〇（ただしい）':'✕（ちがう）', isCorrect:isCorrect, exp:currentQ.exp});
             document.getElementById('options-container').classList.add('hidden');
@@ -521,7 +648,7 @@
             });
             var adaptiveSummary=null;
             if(window.KotobaUnifiedLearning && quizLearningStarted) adaptiveSummary=window.KotobaUnifiedLearning.finish('genres',{
-                genre:'認知・理解トレーニング', activity:'reading-memory-'+STORY_ID,
+                genre:'朗読・記憶トレーニング', activity:readingActivityId,
                 score:score,total:quizData.length
             });
             try{
@@ -529,7 +656,8 @@
                 if(!Array.isArray(records)) records=[];
                 var end=new Date(),start=new Date(quizStartedAt||end.getTime());
                 var profile=window.KotobaQuestUserProfile?window.KotobaQuestUserProfile.getCurrent():{};
-                var entry={id:String(end.getTime())+'-'+Math.random().toString(36).slice(2,8),date:end.getFullYear()+'-'+String(end.getMonth()+1).padStart(2,'0')+'-'+String(end.getDate()).padStart(2,'0'),time:end.toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}),startedAt:start.toISOString(),finishedAt:end.toISOString(),durationSec:Math.max(0,Math.round((end-start)/1000)),category:'朗読・想起クイズ',genre:'認知・理解トレーニング',activity:currentStory.title,score:score,total:quizData.length,rate:Math.round(score/quizData.length*100),kind:'training',turns:0,userProfileId:profile.profileId||'unconfigured',userName:profile.displayName||'未設定',userCode:profile.recordCode||''};
+                var levels=window.KotobaLevels?window.KotobaLevels.finish(readingActivityId,Math.round(score/quizData.length*100),true,quizData.length):null;
+                var entry={id:String(end.getTime())+'-'+Math.random().toString(36).slice(2,8),date:end.getFullYear()+'-'+String(end.getMonth()+1).padStart(2,'0')+'-'+String(end.getDate()).padStart(2,'0'),time:end.toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}),startedAt:start.toISOString(),finishedAt:end.toISOString(),durationSec:Math.max(0,Math.round((end-start)/1000)),category:'朗読・想起クイズ',genre:'認知・理解トレーニング',activity:currentStory.title,score:score,total:quizData.length,rate:Math.round(score/quizData.length*100),kind:'training',turns:0,activityId:readingActivityId,difficultyLevel:levels?levels.level:1,masteryBefore:levels?levels.before:0,masteryAfter:levels?levels.points:0,userProfileId:profile.profileId||'unconfigured',userName:profile.displayName||'名前未登録',userCode:profile.recordCode||''};
                 if(adaptiveSummary) entry.adaptive=adaptiveSummary;
                 records.push(entry);localStorage.setItem(key,JSON.stringify(records));
             }catch(e){console.warn('朗読・想起クイズの記録を保存できませんでした。',e);}

@@ -1,22 +1,6 @@
-const CACHE_NAME = 'kotoba-quest-veta-ver8-pc-integrated-1';
-// Keep the articulation random-quiz assets and all new JPG question cards available offline.
-const QUIZ_JPG_FILES = {
-  matching: 'apple banana mandarin coffee sakura handwash rice bath sunny cup towel plate enpitsu bus kuruma kutu kasa kuma neko mizu tokei kaban hon isu sakuranbo smartphone jitensha tamago pan sekken megane'.split(' '),
-  listen: 'apple kutu densya kasa hon tokei pan kuruma hikouki fune'.split(' '),
-  naming: 'apple banana orenge inu neko cofe hasami'.split(' '),
-  cue: 'kutsushita kagi fuutou makura'.split(' '),
-  fill: 'mesi furo 1.2.3 morning'.split(' '),
-  instruction: 'raise-hand close-eyes stand-up sit hold-pen put-pen throw-pen close-book walk run'.split(' ')
-};
-const QUIZ_JPG_ASSETS = Object.entries(QUIZ_JPG_FILES).flatMap(([section, names]) =>
-  names.map(name => './images/quiz-jpg/' + section + '/' + name + '.jpg')
-);
-const SCENE_JPG_ASSETS = [
-  ...Array.from({length:16},(_,i)=>'./images/scenes-jpg/gesture-'+String(i).padStart(2,'0')+'.jpg'),
-  ...Array.from({length:4},(_,i)=>'./images/scenes-jpg/gesture-b-'+String(i).padStart(2,'0')+'.jpg'),
-  ...Array.from({length:16},(_,i)=>'./images/scenes-jpg/roleplay-a-'+String(i).padStart(2,'0')+'.jpg'),
-  ...Array.from({length:14},(_,i)=>'./images/scenes-jpg/roleplay-b-'+String(i).padStart(2,'0')+'.jpg')
-];
+const CACHE_NAME = 'kotoba-quest-veta-ver16-pc-judgement-1';
+// Cache the small application shell during installation. Large photos, sound
+// and optional recognition resources are cached only when actually requested.
 const APP_SHELL = [
   './',
   './index.html',
@@ -24,12 +8,18 @@ const APP_SHELL = [
   './opening-event.html',
   './manifest.webmanifest?v=105',
   './assets/icons/icon-192.png',
-  './style.css?v=veta2',
+  './style.css?v=veta9-profile-dash',
+  './difficulty-veta11.css?v=1',
   './title-responsive-beta3.css?v=3',
   './articulation-random-beta4.css?v=4',
   './responsive-beta6.css?v=6',
   './browser-responsive.css?v=89',
   './v47-improvements.css?v=jlect-choice-1',
+  './kotoba-dungeon-pixel-veta13.css?v=1',
+  './veta14-dungeon.css?v=2',
+  './veta14-ui.css?v=2',
+  './veta14-theme-sync.js?v=1',
+  './fantasy-event-veta13.css?v=1',
   './pronunciation-training.css?v=89',
   './encoding-safe.js',
   './android-bridge-android.js?v=beta91-audio',
@@ -37,46 +27,38 @@ const APP_SHELL = [
   './kotoba-sound-pack-v2.js?v=2',
   './kotoba-upgrades-v2.js?v=2',
   './copy-handwriting-bank-v2.js?v=jlect-choice-1',
-  './ocr/kotoba-jlect-model.js?v=1',
-  './ocr/kotoba-jlect-candidates.js?v=1',
-  './adaptive-learning.js?v=veta1',
-  './unified-learning-veta1.js?v=veta2',
+  './learning-mode-veta12.js?v=1',
+  './adaptive-learning.js?v=veta12',
+  './unified-learning-veta1.js?v=veta12',
   './event-message-sound.js?v=89',
   './offline-conversation-engine.js?v=91',
-  './app.js?v=veta8-browser-integration',
-  './user-profile.js?v=veta2',
+  './app.js?v=veta16-judgement',
+  './user-profile.js?v=veta16-profile',
   './aphasia-modes.js?v=veta2',
-  './app-ui.js?v=beta91-audio',
-  './generative-ai-chat.js?v=104',
+  './app-ui.js?v=veta14-theme',
+  './generative-ai-chat.js?v=veta16-answer-record',
   './ai-download-gate.js?v=99',
   './ai-download-gate.css?v=99',
   './pictogram-3d.html',
+  './fact-bank-veta11.js?v=1',
   './daily-streak.js?v=108',
   './daily-streak.css?v=108',
   './kotoba-dungeon.html',
-  './kotoba-dungeon.js?v=veta2',
+  './kotoba-dungeon.js?v=veta16-profile',
   './kotoba-dungeon.css',
   './reading-memory.html',
+  './kotoba-quest-ud.html',
+  './fantasy-v47.js?v=veta11-level100',
   './community-board.js',
   './reading-memory-mode.js',
-  './ocr/browser-japanese-ocr.js?v=beta87-multipass-ocr',
-  './ocr/kotoba-ink-shape.js?v=beta9-hybrid-ink',
-  './ocr/kotoba-kanji-strokes-v92.js?v=92',
-  './ocr/kotoba-ink-assist-v92.js?v=92',
-  './ocr/kanjivg-style-guide.js?v=1',
-  './ocr/vendor/tesseract.min.js',
-  './ocr/vendor/worker.min.js',
-  './v47-improvements.js?v=veta8-browser-integration',
+  './v47-improvements.js?v=veta11-level100',
   './v57-task-rebuild.js?v=beta8-fixes',
-  './pronunciation-training.js?v=veta2',
-  './sounds/user-bgm.mp3',
-  './sounds/tap.mp3',
-  './sounds/gacha-reward.mp3',
-  './sounds/all-correct.mp3',
-  './sounds/record-saved.mp3',
-  './sounds/footstep.mp3',
-  ...QUIZ_JPG_ASSETS,
-  ...SCENE_JPG_ASSETS
+  './question-expansion-v10.js?v=veta10-20questions',
+  './question-bank-veta11.js?v=100level1',
+  './difficulty-veta11.js?v=veta14-level-lock',
+  './handwriting-lazy-veta12.js?v=1',
+  './pronunciation-training.js?v=veta16-record-status',
+  './sounds/tap.mp3'
 ];
 self.addEventListener('install', event => {
   event.waitUntil((async () => {

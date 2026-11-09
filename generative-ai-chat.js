@@ -276,9 +276,10 @@
         bubble('assistant', '正解です！ つぎの問題へ進みます。');
         note('正解！ 自動で次へ進みます。');
         setBusy(true);
-        const accepted = window.KotobaAIQuizBridge && window.KotobaAIQuizBridge.correct();
+        const accepted = window.KotobaAIQuizBridge && window.KotobaAIQuizBridge.correct(answer);
         if (!accepted) { setBusy(false); note('進行できませんでした。画面を開き直してください。'); }
       } else {
+        if (window.KotobaAIQuizBridge && window.KotobaAIQuizBridge.wrong) window.KotobaAIQuizBridge.wrong(answer);
         bubble('assistant', 'おしいです。もう一度考えてみましょう。');
         note('まちがえても大丈夫です。ヒントを使って、もう一度答えましょう。');
         if (typeof field.focus === 'function') field.focus();

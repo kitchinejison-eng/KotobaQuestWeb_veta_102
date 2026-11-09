@@ -594,12 +594,11 @@
 </style>
   <link rel="stylesheet" href="browser-responsive.css">
   <link rel="stylesheet" href="daily-streak.css?v=108">
+  <link rel="stylesheet" href="fantasy-event-veta13.css?v=1">
+  <link rel="stylesheet" href="veta14-ui.css?v=1">
   <script src="event-message-sound.js?v=86"></script>
 </head>
 <body>
-</div>
-
-
 <div id="game-container">
   <!-- 上部コントロールバー -->
   <div class="top-bar">
@@ -622,7 +621,7 @@
 
   <!-- 画面全体に重ねる会話イベント。canvasのoverflowに切られません。 -->
     <!-- ことばクエスト会話イベント（ねこまる） -->
-    <div id="eventOverlay" class="event-overlay" aria-live="polite">
+    <div id="eventOverlay" class="event-overlay" role="dialog" aria-modal="true" aria-label="ことばファンタジーの会話イベント" aria-hidden="true">
       <div class="event-bg"></div>
       <button id="eventSkipBtn" class="event-overlay-skip" type="button" aria-label="会話イベントをスキップしてゲームを始める">スキップ ▶</button>
       <div class="event-character">
@@ -630,8 +629,8 @@
       </div>
       <div class="event-dialog">
         <div id="eventName" class="event-dialog-name">ねこまる</div>
-        <div id="eventText" class="event-dialog-text"></div>
-                <button id="eventNextBtn" class="event-dialog-next" type="button" aria-label="次へ">▼</button>
+        <div id="eventText" class="event-dialog-text" aria-live="polite"></div>
+        <div class="event-dialog-footer"><span id="eventProgress" class="event-progress">1 / 4</span><span class="event-step-help">タップまたは「つぎへ」で進みます</span><button id="eventNextBtn" class="event-dialog-next" type="button" aria-label="次へ">つぎへ ▶</button></div>
       </div>
     </div>
     
@@ -656,7 +655,7 @@
   <div class="status-message-grid">
     <div class="ud-box status-box">
       <div class="status-row">
-        <span><ruby>勇者<rt>ゆうしゃ</rt></ruby></span>
+        <span><ruby>勇者<rt>ゆうしゃ</rt></ruby> <strong id="fantasyHeroName">冒険者</strong></span>
         <span>Lv.<span id="hero-lv">1</span></span>
       </div>
       <div class="status-row">
@@ -730,6 +729,13 @@
 
 <script src="android-bridge-android.js"></script>
 <script src="daily-streak.js?v=108"></script>
+<script src="user-profile.js?v=veta16-profile"></script>
+<script src="audio-mixer-v86.js?v=91"></script>
+<script src="learning-mode-veta12.js?v=1"></script>
+<script src="adaptive-learning.js?v=veta12"></script>
+<script src="unified-learning-veta1.js?v=veta12"></script>
+<script src="difficulty-veta11.js?v=1"></script>
+<script src="veta14-theme-sync.js?v=1"></script>
 <script>
 // ==========================================
 // 1. Web Audio API レトロサウンド効果音
@@ -745,7 +751,7 @@ function initAudio() {
 
 function playSE(type) {
   if (window.KotobaSoundPack) {
-    var mapped = ({click:'tap',fanfare:'clear',attack:'footsteps'})[type];
+    var mapped = ({click:'tap',fanfare:'clear'})[type];
     if (mapped && window.KotobaSoundPack.play(mapped)) return;
   }
   if (!audioCtx) return;
@@ -771,6 +777,22 @@ function playSE(type) {
     gain.gain.setValueAtTime(0.25, now);
     gain.gain.linearRampToValueAtTime(0, now + 0.15);
     osc.start(now); osc.stop(now + 0.15);
+  }
+  else if (type === 'hit') {
+    // Short, familiar RPG impact sound — separate from the footstep sample.
+    var master=Number(localStorage.getItem('kotobaquest_volume_v3')||60)/100;
+    var settings={};try{settings=JSON.parse(localStorage.getItem('kotobaquest_audio_v86')||'{}');}catch(_){}
+    if(settings.seOn===false)return;
+    var amount=Math.max(0,Math.min(1,master)) * Math.max(0,Math.min(1,Number(settings.se==null?100:settings.se)/100));
+    if(amount<=0)return;
+    [160,92].forEach(function(freq,i){
+      var o=audioCtx.createOscillator(),g=audioCtx.createGain(),start=now+i*.035;
+      o.type=i?'triangle':'sawtooth';o.frequency.setValueAtTime(freq,start);
+      o.frequency.exponentialRampToValueAtTime(55,start+.12);
+      g.gain.setValueAtTime(.0001,start);g.gain.exponentialRampToValueAtTime(.18*amount,start+.012);
+      g.gain.exponentialRampToValueAtTime(.0001,start+.15);
+      o.connect(g);g.connect(audioCtx.destination);o.start(start);o.stop(start+.16);
+    });
   }
   else if (type === 'correct') {
     [523.25, 659.25, 783.99, 1046.50].forEach((freq, idx) => {
@@ -839,6 +861,7 @@ function chooseJapaneseVoice(voices) {
 
 function speakText(text, onEndCallback = null) {
   if (!text) return false;
+  try { if (JSON.parse(localStorage.getItem('kotobaquest_audio_v86')||'{}').ttsOn===false) return false; } catch(_) {}
   if (window.AndroidSpeech && typeof window.AndroidSpeech.speak === 'function') {
     try {
       window.AndroidSpeech.speak(String(text).replace(/\s+/g, ' ').trim());
@@ -1236,10 +1259,12 @@ function renderEventStep(){
   const name = document.getElementById('eventName');
   const text = document.getElementById('eventText');
   const next = document.getElementById('eventNextBtn');
-  if(!overlay || !text || !next) return;
+  if(eventFinished || !overlay || !text || !next) return;
   const step = EVENT_STEPS[eventIndex] || EVENT_STEPS[EVENT_STEPS.length - 1];
+  if(!step){finishEvent();return;}
   overlay.style.display = 'flex';
-  overlay.classList.toggle('has-streak', !!isWin);
+  overlay.setAttribute('aria-hidden','false');
+  overlay.classList.add('is-event-active');
   if (activeEventCharacter) {
     const characterImage = document.getElementById('eventCharacterImage');
     if (characterImage) {
@@ -1253,6 +1278,8 @@ function renderEventStep(){
     }
   }
   if(name) name.textContent = step.name;
+  const progress=document.getElementById('eventProgress');
+  if(progress) progress.textContent=(eventIndex+1)+' / '+EVENT_STEPS.length;
   if(eventTypingTimer) clearInterval(eventTypingTimer);
   const token = ++eventTypingToken;
   let i = 0;
@@ -1264,7 +1291,7 @@ function renderEventStep(){
     if(i >= step.text.length){ clearInterval(eventTypingTimer); eventTypingTimer=null; }
   }, 45);
   if (window.KQEventMessageSound) window.KQEventMessageSound.play();
-  next.textContent = eventIndex >= EVENT_STEPS.length - 1 ? 'ゲームへ' : '▼';
+  next.textContent = eventIndex >= EVENT_STEPS.length - 1 ? '冒険へ ▶' : 'つぎへ ▶';
 }
 
 function finishEvent(){
@@ -1275,11 +1302,12 @@ function finishEvent(){
   stopSpeech();
   if (window.KQEventMessageSound) window.KQEventMessageSound.stop();
   const overlay = document.getElementById('eventOverlay');
-  if(overlay) overlay.style.display = 'none';
+  if(overlay){overlay.style.display='none';overlay.setAttribute('aria-hidden','true');overlay.classList.remove('is-event-active');}
   beginBattle();
 }
 
 function advanceEvent(){
+  if(eventFinished || !EVENT_STEPS.length) return;
   const text = document.getElementById('eventText');
   const step = EVENT_STEPS[eventIndex];
   if(text && step && text.textContent !== step.text){
@@ -1299,6 +1327,8 @@ function advanceEvent(){
 }
 
 function startConversationEvent(){
+  if(eventTypingTimer){clearInterval(eventTypingTimer);eventTypingTimer=null;}
+  ++eventTypingToken;
   eventFinished = false;
   eventIndex = 0;
   const profile = EVENT_CHARACTER_PROFILES[Math.floor(Math.random() * EVENT_CHARACTER_PROFILES.length)];
@@ -1319,13 +1349,20 @@ function beginBattle(){
 }
 
 function initGame() {
+  var profile=window.KotobaQuestUserProfile&&window.KotobaQuestUserProfile.getCurrent();
+  var heroName=document.getElementById('fantasyHeroName');
+  if(heroName)heroName.textContent=window.KotobaQuestUserProfile&&window.KotobaQuestUserProfile.hasProfile()&&profile&&profile.displayName?profile.displayName:'冒険者';
   clearGameActionTimers();
   stopSpeech();
   hero = { lv: 1, hp: 100, maxHp: 100, atk: 35 };
   enemyIndex = 0;
   currentEnemy = null;
   currentQuiz = null;
-  quizPool = [...QUIZZES].sort(() => Math.random() - 0.5);
+  const selectedFantasyLevel=window.KotobaLevels?window.KotobaLevels.get('kotobaQuest').selected:1;
+  const fantasyPool=window.KotobaLevels?window.KotobaLevels.pool(QUIZZES,selectedFantasyLevel):QUIZZES;
+  quizPool = window.KotobaUnifiedLearning && window.KotobaUnifiedLearning.isEnabledFor('genres')
+    ? window.KotobaUnifiedLearning.select('genres',fantasyPool,'kotobaQuest',fantasyPool.length).reverse()
+    : [...fantasyPool].sort(() => Math.random() - 0.5);
   gameStartedAt = Date.now();
   answeredCount = 0;
   correctCount = 0;
@@ -1343,6 +1380,7 @@ function initGame() {
   updateUI();
   const overlay = document.getElementById('overlay');
   if (overlay) overlay.style.display = 'none';
+  if (window.KotobaUnifiedLearning) window.KotobaUnifiedLearning.begin('genres','ことばRPG','kotobaQuest');
   startConversationEvent();
 }
 
@@ -1365,7 +1403,11 @@ function nextQuiz() {
   document.getElementById('btn-show-hint').style.display = localStorage.getItem('kotobaquest_hints_v2') === '0' ? 'none' : '';
 
   if (quizPool.length === 0) {
-    quizPool = [...QUIZZES].sort(() => Math.random() - 0.5);
+    const level=window.KotobaLevels?window.KotobaLevels.get('kotobaQuest').selected:1;
+    const refreshed=window.KotobaLevels?window.KotobaLevels.pool(QUIZZES,level):QUIZZES;
+    quizPool=window.KotobaUnifiedLearning && window.KotobaUnifiedLearning.isEnabledFor('genres')
+      ? window.KotobaUnifiedLearning.select('genres',refreshed,'kotobaQuest',refreshed.length).reverse()
+      : [...refreshed].sort(() => Math.random() - 0.5);
   }
   currentQuiz = quizPool.pop();
 
@@ -1443,6 +1485,11 @@ function selectAnswer(index) {
     given:currentQuiz.opts[index] ? String(currentQuiz.opts[index].speech || '') : '',
     correct:fantasyCorrect, status:fantasyCorrect?'正解':'不正解',
     improvement:fantasyCorrect?'':String(currentQuiz.expSpeech || currentQuiz.hintSpeech || '正解の言葉を確認しましょう。').slice(0,200)});
+  if (window.KotobaUnifiedLearning) window.KotobaUnifiedLearning.recordAnswer('genres',{
+    id:'fantasy-'+String(currentQuiz.qSpeech||''),
+    difficultyLevel:currentQuiz.difficultyLevel || 1,
+    answer:correctOption ? String(correctOption.speech||'') : ''
+  },fantasyCorrect);
   stopSpeech();
   initAudio();
 
@@ -1458,7 +1505,7 @@ function selectAnswer(index) {
 
       scheduleGameAction(function(){
         if(!currentEnemy || currentEnemy.hp <= 0) return;
-        playSE('attack');
+        playSE('hit');
         heroX += 40;
         slashEffect = true;
         enemyShake = 15;
@@ -1502,7 +1549,7 @@ function selectAnswer(index) {
 
       scheduleGameAction(function(){
         if(!currentEnemy) return;
-        playSE('attack');
+        playSE('hit');
         heroShake = 15;
         const dmg = currentEnemy.atk + Math.floor(Math.random() * 5);
         hero.hp = Math.max(0, hero.hp - dmg);
@@ -1564,11 +1611,22 @@ function saveKotobaQuestRecord(isWin) {
       score: score,
       total: total,
       rate: rate,
+      activityId:'kotobaQuest',
+      difficultyLevel:window.KotobaLevels?window.KotobaLevels.get('kotobaQuest').selected:1,
       kind: 'kotobaQuest',
       turns: 0,
       result: isWin ? 'clear' : 'gameover'
     };
     record.questionResults = fantasyQuestionResults.slice(0,100);
+    if (window.KotobaUnifiedLearning) {
+      record.adaptive = window.KotobaUnifiedLearning.finish('genres',{
+        genre:'ことばRPG',activity:'kotobaQuest',score:score,total:total
+      });
+    }
+    if(window.KotobaLevels && isWin && total){
+      const mastery=window.KotobaLevels.finish('kotobaQuest',rate,true,total);
+      record.masteryBefore=mastery.before;record.masteryAfter=mastery.points;
+    }
     const key = 'aphasiaTrainingRecordsV4';
     let records = [];
     try { records = JSON.parse(localStorage.getItem(key) || '[]'); } catch(e) { records = []; }
@@ -1636,6 +1694,15 @@ document.getElementById('eventSkipBtn').addEventListener('click', () => {
   playSE('click');
   finishEvent();
 });
+document.addEventListener('keydown', function(event) {
+  const overlay=document.getElementById('eventOverlay');
+  if(!overlay || overlay.getAttribute('aria-hidden')==='true' || eventFinished) return;
+  if(event.key==='Escape') {event.preventDefault();finishEvent();}
+  else if((event.key==='Enter' || event.key===' ') &&
+          !['BUTTON','INPUT','TEXTAREA'].includes((event.target && event.target.tagName)||'')) {
+    event.preventDefault();advanceEvent();
+  }
+});
 document.getElementById('record-btn').addEventListener('click', openKotobaQuestRecords);
 
 document.getElementById('start-btn').addEventListener('click', () => {
@@ -1671,13 +1738,14 @@ document.getElementById('btn-auto-speech').addEventListener('click', function() 
 
 // ファイル切り替え時に前のイベント表示が残らないよう、初期状態は必ず非表示。
 const initialEventOverlay = document.getElementById('eventOverlay');
-if (initialEventOverlay) initialEventOverlay.style.display = 'none';
+if (initialEventOverlay) {initialEventOverlay.style.display = 'none';initialEventOverlay.setAttribute('aria-hidden','true');}
 
 // レンダリングループ開始
 render();
 // 会話イベントは「ゲームスタート」から initGame() が呼ばれたときだけ開始します。
 </script>
 <script src="kotoba-sound-pack-v2.js?v=2"></script>
-<script src="fantasy-v47.js?v=69"></script>
+<script src="fact-bank-veta11.js?v=1"></script>
+<script src="fantasy-v47.js?v=veta11-level100"></script>
 </body>
 </html>

@@ -6,9 +6,7 @@
   'use strict';
   if (window.KotobaUnifiedLearning) return;
 
-  var PREFIX = 'kotobaquest_unified_veta1_';
   var RECORDS_KEY = 'aphasiaTrainingRecordsV4';
-  var DEFAULTS = { allGenres: false, dungeon: false, records: false, adaptiveHints: false };
   var runtime = null;
 
   function currentProfile() {
@@ -19,21 +17,16 @@
       var data = JSON.parse(localStorage.getItem('kotobaquest_user_profile_v1') || 'null');
       if (data && typeof data === 'object') return data;
     } catch (_) {}
-    return { profileId: 'unconfigured', displayName: '未設定', recordCode: '' };
-  }
-  function profileKey() {
-    return PREFIX + String(currentProfile().profileId || 'unconfigured')
-      .replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 60);
-  }
-  function savedSettings() {
-    try {
-      var parsed = JSON.parse(localStorage.getItem(profileKey()) || '{}');
-      return Object.assign({}, DEFAULTS, parsed && typeof parsed === 'object' ? parsed : {});
-    } catch (_) { return Object.assign({}, DEFAULTS); }
+    return { profileId: 'unconfigured', displayName: '名前未登録', recordCode: '' };
   }
   // Capture only once. Changing a switch deliberately requires a restart.
   function activeSettings() {
-    if (!runtime) runtime = Object.assign({}, savedSettings());
+    // VETA12: one profile-scoped switch controls every learning scope.
+    // Retain the launch-time snapshot so running lessons do not change midway.
+    if (!runtime) {
+      var on = !!(window.KotobaLearningMode && window.KotobaLearningMode.isEnabled());
+      runtime = {allGenres:on, dungeon:on, records:on, adaptiveHints:on};
+    }
     return runtime;
   }
   function enabled(scope) {
@@ -72,11 +65,11 @@
     if (enabled(scope) && adaptive()) {
       summary = adaptive().finish(session.genre, session.activity, session.score, session.total);
     }
-    if (session.saveRecord && enabled(scope) && enabled('records')) saveExternalRecord(session, summary);
+    // A disabled learning mode must never stop ordinary lesson records.
+    if (session.saveRecord) saveExternalRecord(session, summary);
     return summary;
   }
   function saveExternalRecord(data, summary) {
-    if (!enabled('records')) return false;
     var now = new Date();
     var finished = data.finishedAt ? new Date(data.finishedAt) : now;
     var started = data.startedAt ? new Date(data.startedAt) : finished;
@@ -98,7 +91,7 @@
       rate: total ? Math.round(score / total * 100) : null,
       kind: String(data.kind || 'training'), turns: 0,
       userProfileId: String(profile.profileId || 'unconfigured'),
-      userName: String(profile.displayName || '未設定'),
+      userName: String(profile.displayName || '名前未登録'),
       userCode: String(profile.recordCode || '')
     };
     if (summary) record.adaptive = summary;
@@ -124,32 +117,6 @@
   function setup() {
     // Ensure the profile is available before the once-per-launch snapshot.
     activeSettings();
-    var names = [
-      ['unifiedAllGenres', 'allGenres'],
-      ['unifiedDungeon', 'dungeon'],
-      ['unifiedRecords', 'records'],
-      ['unifiedHints', 'adaptiveHints']
-    ];
-    names.forEach(function (entry) {
-      var input = document.getElementById(entry[0]);
-      if (!input) return;
-      input.checked = !!savedSettings()[entry[1]];
-      input.addEventListener('change', function () {
-        var next = savedSettings();
-        next[entry[1]] = input.checked;
-        try {
-          localStorage.setItem(profileKey(), JSON.stringify(next));
-          var notice = document.getElementById('unifiedRestartNotice');
-          if (notice) notice.textContent = '設定を保存しました。新しい連動設定はアプリを再起動してから反映されます。';
-        } catch (error) {
-          input.checked = !input.checked;
-          var failed = document.getElementById('unifiedRestartNotice');
-          if (failed) failed.textContent = '保存できませんでした。端末の空き容量や保存設定を確認してください。';
-        }
-      });
-    });
-    var reload = document.getElementById('unifiedRestartButton');
-    if (reload) reload.addEventListener('click', function () { window.location.reload(); });
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setup);
   else setup();
@@ -159,6 +126,6 @@
     finish: finish, saveExternalRecord: saveExternalRecord,
     shouldSuggestHint: shouldSuggestHint,
     getRuntimeSettings: function () { return Object.assign({}, activeSettings()); },
-    getSavedSettings: savedSettings
+    getSavedSettings: function () { return Object.assign({}, activeSettings()); }
   };
 })();

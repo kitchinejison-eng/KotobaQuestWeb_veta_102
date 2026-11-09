@@ -17,14 +17,35 @@
   ];
   var OUTFITS = [
     { id: 'crown', label: '王冠', icon: '👑', description: 'きらめく王冠で冒険者らしく！' },
-    { id: 'cape', label: 'マント', icon: '🦸', description: '勇者のマントをまといます。' },
+    { id: 'cape', label: 'マント', icon: '🟥', description: '勇者のマントをまといます。' },
     { id: 'flower', label: '花かざり', icon: '🌸', description: 'かわいい花かざりを付けます。' },
-    { id: 'glasses', label: 'メガネ', icon: '🤓', description: 'かしこさアップのメガネです。' },
+    { id: 'glasses', label: 'メガネ', icon: '👓', description: 'かしこさアップのメガネです。' },
     { id: 'sparkle', label: 'キラキラ', icon: '✨', description: 'まわりにキラキラの輝きが付きます。' },
     { id: 'ribbon', label: 'リボン', icon: '🎀', description: 'おしゃれなリボンで着せ替えます。' },
     { id: 'headphones', label: 'ヘッドホン', icon: '🎧', description: '音楽好きのヘッドホンです。' },
     { id: 'medal', label: 'メダル飾り', icon: '🏅', description: '冒険の証のメダルを飾ります。' }
   ];
+  // Text-only treasure collection: no additional large images required.
+  var TREASURES = [
+    {id:'ruby',label:'赤の宝石',icon:'❤️',rarity:'normal'},
+    {id:'sapphire',label:'青の宝石',icon:'💎',rarity:'normal'},
+    {id:'leaf',label:'森のしずく',icon:'🍀',rarity:'normal'},
+    {id:'star',label:'星のバッジ',icon:'🌟',rarity:'rare'},
+    {id:'moon',label:'月のバッジ',icon:'🌙',rarity:'rare'},
+    {id:'key',label:'銀のカギ',icon:'🗝️',rarity:'rare'},
+    {id:'scroll',label:'魔法の巻物',icon:'📜',rarity:'rare'},
+    {id:'crystal',label:'きせきの結晶',icon:'🔮',rarity:'super'},
+    {id:'crown-gem',label:'王冠の宝玉',icon:'👑',rarity:'super'},
+    {id:'rainbow',label:'虹の秘宝',icon:'🌈',rarity:'special'}
+  ];
+  function globalProfileName(){
+    var profileApi=window.KotobaQuestUserProfile;
+    var p=profileApi&&profileApi.getCurrent();
+    return profileApi&&profileApi.hasProfile()&&p&&p.displayName?String(p.displayName).trim().slice(0,60):'冒険者';
+  }
+  function syncProfileName(){
+    if(data.profile && data.profile.name!==globalProfileName()) {data.profile.name=globalProfileName();saveData();}
+  }
   var TIER_META = [
     { title: '絵を見て、ことばを選ぼう', description: '絵やマークを見て、合う言葉を選びます。', label: '絵とことば', range: 'Lv.1〜2' },
     { title: 'ことばの仲間を見つけよう', description: 'ものの名前や特徴から、仲間やグループを考えます。', label: '仲間分け', range: 'Lv.3〜4' },
@@ -146,6 +167,7 @@
   var toastTimer = null;
   var lastLevelUp = null;
   var pendingReward = null;
+  var pendingGachaDraws = [];
   var gachaBusy = false;
   var gachaRevealTimer = null;
   var pendingBonusOffer = false;
@@ -161,6 +183,8 @@
       normalClearsSinceBonus: 0,
       unlockedAvatarIds: [1, 2, 3, 4],
       unlockedOutfitIds: [],
+      unlockedTreasureIds: [],
+      starShards: 0,
       rules: { questionCount: 5, autoRead: false, showHints: true },
       history: []
     };
@@ -174,6 +198,8 @@
       if (!d || typeof d !== 'object') return base;
       base.unlockedAvatarIds = Array.from(new Set([1, 2, 3, 4].concat(Array.isArray(d.unlockedAvatarIds) ? d.unlockedAvatarIds.map(Number).filter(function (id) { return AVATARS.some(function (a) { return a.id === id && a.reward; }); }) : [])));
       base.unlockedOutfitIds = Array.from(new Set((Array.isArray(d.unlockedOutfitIds) ? d.unlockedOutfitIds : []).filter(function (id) { return OUTFITS.some(function (o) { return o.id === id; }); })));
+      base.unlockedTreasureIds = Array.from(new Set((Array.isArray(d.unlockedTreasureIds)?d.unlockedTreasureIds:[]).filter(function(id){return TREASURES.some(function(t){return t.id===id;});})));
+      base.starShards = Math.max(0,Math.floor(Number(d.starShards)||0));
       base.medals = Math.max(0, Math.floor(Number(d.medals) || 0));
       var savedAvatar = d.profile ? clampAvatar(d.profile.avatar) : 4;
       if (d.profile && savedAvatar > 4 && base.unlockedAvatarIds.indexOf(savedAvatar) < 0) base.unlockedAvatarIds.push(savedAvatar);
@@ -205,6 +231,9 @@
     ['kdSetupScreen','kdHomeScreen','kdSettingsScreen','kdChallengeScreen','kdResultScreen'].forEach(function (screenId) {
       var el = $(screenId); if (el) el.classList.toggle('kd-hidden', screenId !== id);
     });
+    document.body.classList.toggle('kd-pixel-mode', id === 'kdHomeScreen');
+    if (id === 'kdHomeScreen' || id === 'kdChallengeScreen') startDungeonBgm();
+    else stopDungeonBgm();
     window.scrollTo(0, 0);
   }
   function assetAvatar(id) {
@@ -244,17 +273,25 @@
   function findOutfit(id) { return OUTFITS.find(function (o) { return o.id === id; }) || null; }
   function isOutfitUnlocked(id) { return data.unlockedOutfitIds.indexOf(id) >= 0; }
   function availableRewards() {
-    var rewards = AVATARS.filter(function (a) { return a.reward && !isAvatarUnlocked(a.id); }).map(function (a) { return { type: 'avatar', id: a.id, label: a.label, src: a.src, description: '新しい仲間「' + a.label + '」がコレクションに加わりました！' }; });
-    OUTFITS.forEach(function (o) { if (!isOutfitUnlocked(o.id)) rewards.push({ type: 'outfit', id: o.id, label: o.label, icon: o.icon, description: o.description }); });
+    var rewards = AVATARS.filter(function (a) { return a.reward && !isAvatarUnlocked(a.id); }).map(function (a) { return { type: 'avatar', id: a.id, label: a.label, src: a.src, rarity:a.id===9?'special':a.id>=7?'super':'rare', description: '新しい仲間「' + a.label + '」がコレクションに加わりました！' }; });
+    OUTFITS.forEach(function (o) { if (!isOutfitUnlocked(o.id)) rewards.push({ type: 'outfit', id: o.id, label: o.label, icon: o.icon, rarity:o.id==='crown'?'super':'normal', description: o.description }); });
+    TREASURES.forEach(function(t){if(data.unlockedTreasureIds.indexOf(t.id)<0)rewards.push({type:'treasure',id:t.id,label:t.label,icon:t.icon,rarity:t.rarity,description:t.label+'が宝物コレクションに加わりました！'});});
     return rewards;
+  }
+  function allRewards(){
+    return AVATARS.filter(function(a){return a.reward;}).map(function(a){return {type:'avatar',id:a.id,label:a.label,src:a.src,rarity:a.id===9?'special':a.id>=7?'super':'rare'};})
+      .concat(OUTFITS.map(function(o){return {type:'outfit',id:o.id,label:o.label,icon:o.icon,rarity:o.id==='crown'?'super':'normal'};}))
+      .concat(TREASURES.map(function(t){return {type:'treasure',id:t.id,label:t.label,icon:t.icon,rarity:t.rarity};}));
   }
   function setHomeOutfit() {
     var badge = $('kdHomeOutfit');
     if (!badge) return;
     var outfit = data.profile ? findOutfit(data.profile.outfitId) : null;
     badge.textContent = outfit ? outfit.icon : '';
-    badge.classList.toggle('is-visible', !!outfit);
+    badge.className = 'kd-avatar-outfit' + (outfit ? ' is-visible kd-outfit-' + outfit.id : '');
     badge.setAttribute('aria-label', outfit ? '着せ替え：' + outfit.label : '着せ替えなし');
+    var label = $('kdEquippedOutfitLabel');
+    if (label) label.textContent = '着せ替え：' + (outfit ? outfit.label : 'なし');
   }
   function renderCollection() {
     var avatarHost = $('kdCollectionAvatars');
@@ -272,16 +309,30 @@
     });
     outfitHost.innerHTML = '';
     var none = document.createElement('button'); none.type = 'button'; none.className = 'kd-outfit-item' + (!data.profile || !data.profile.outfitId ? ' is-equipped' : '');
+    none.setAttribute('aria-pressed', String(!data.profile || !data.profile.outfitId));
     none.innerHTML = '<span class="kd-outfit-icon">🚫</span><span class="kd-outfit-none">着せ替えなし</span>';
     none.addEventListener('click', function () { if (data.profile) { data.profile.outfitId = null; saveData(); renderHome(); renderCollection(); showToast('着せ替えを外しました。'); } });
     outfitHost.appendChild(none);
     OUTFITS.filter(function (o) { return isOutfitUnlocked(o.id); }).forEach(function (outfit) {
       var button = document.createElement('button'); button.type = 'button'; button.className = 'kd-outfit-item' + (data.profile && data.profile.outfitId === outfit.id ? ' is-equipped' : '');
+      button.setAttribute('aria-pressed', String(!!(data.profile && data.profile.outfitId === outfit.id)));
       button.innerHTML = '<span class="kd-outfit-icon"></span><span></span>';
       button.children[0].textContent = outfit.icon; button.children[1].textContent = outfit.label;
       button.addEventListener('click', function () { if (data.profile) { data.profile.outfitId = outfit.id; saveData(); renderHome(); renderCollection(); playDungeonSfx('unlock'); showToast(outfit.label + 'を装備しました！'); } });
       outfitHost.appendChild(button);
     });
+    var treasures=$('kdCollectionTreasures');
+    if(treasures){
+      treasures.replaceChildren();
+      TREASURES.filter(function(t){return data.unlockedTreasureIds.indexOf(t.id)>=0;}).forEach(function(t){
+        var item=document.createElement('div');item.className='kd-outfit-item';
+        var icon=document.createElement('span');icon.className='kd-outfit-icon';icon.textContent=t.icon;
+        var title=document.createElement('span');title.textContent=t.label;
+        item.appendChild(icon);item.appendChild(title);treasures.appendChild(item);
+      });
+      if(!treasures.children.length){var empty=document.createElement('p');empty.textContent='まだ宝物はありません。';treasures.appendChild(empty);}
+    }
+    if($('kdStarShards'))$('kdStarShards').textContent=String(data.starShards||0);
   }
   function toggleCollection(forceOpen) {
     var panel = $('kdCollectionPanel'); if (!panel) return;
@@ -292,64 +343,99 @@
   function updateMedalUI() {
     var medals = Math.max(0, Number(data.medals) || 0);
     var count = $('kdHomeMedals'); if (count) count.textContent = String(medals);
+    var topCount = $('kdTopMedals'); if (topCount) topCount.textContent = String(medals);
     var progress = Math.min(5, medals);
     var progressLabel = $('kdMedalProgressLabel'); if (progressLabel) progressLabel.textContent = progress + ' / 5 枚';
     var slots = $('kdMedalSlots');
     if (slots) Array.prototype.forEach.call(slots.querySelectorAll('.kd-medal-slot'), function (slot, index) { slot.classList.toggle('is-filled', index < progress); });
-    var next = $('kdMedalNextText'); if (next) next.textContent = availableRewards().length ? (medals >= 5 ? 'ガチャを引けます！' : 'あと' + (5 - medals) + '枚でガチャ！') : 'コレクション完成！';
-    var button = $('kdGachaBtn'); if (button) { button.disabled = gachaBusy || medals < 5 || availableRewards().length === 0; button.textContent = availableRewards().length ? (medals < 5 ? '🎁 メダル5枚でガチャ（あと' + (5-medals) + '枚）' : '✨ ガチャを引く！') : '🏆 全アイテム獲得済み'; }
+    var next = $('kdMedalNextText'); if (next) next.textContent = medals >= 50?'10連ガチャに挑戦！':medals>=5?'ガチャを引けます！':'あと'+(5-medals)+'枚でガチャ！';
+    var button = $('kdGachaBtn'); if (button) { button.disabled = gachaBusy || medals < 5; button.textContent = medals<5?'🎁 1回（あと'+(5-medals)+'枚）':'🎁 1回ガチャ｜5枚'; }
+    var ten=$('kdGacha10Btn');if(ten){ten.disabled=gachaBusy||medals<50;ten.textContent=medals<50?'🌟 10連（あと'+(50-medals)+'枚）':'🌟 10連ガチャ｜50枚';}
   }
-  function revealGachaReward(reward) {
-    var visual = $('kdGachaRewardVisual'); visual.innerHTML = '';
-    if (reward.type === 'avatar') {
-      var img = document.createElement('img'); img.src = reward.src; img.alt = reward.label; img.className = 'kd-revealed-avatar'; visual.appendChild(img);
-      $('kdGachaEquipBtn').textContent = 'このアバターに変更';
-      $('kdGachaRarityBadge').textContent = '🌟 NEW PARTNER';
+  function choosePrize(list) {
+    var weights={normal:12,rare:6,super:2,special:1};
+    var total=list.reduce(function(n,r){return n+(weights[r.rarity]||1);},0),roll=Math.random()*total;
+    for(var i=0;i<list.length;i++){roll-=weights[list[i].rarity]||1;if(roll<0)return list[i];}
+    return list[list.length-1];
+  }
+  function grantPrize(prize) {
+    var r=Object.assign({},prize),owned=r.type==='avatar'?isAvatarUnlocked(r.id):r.type==='outfit'?isOutfitUnlocked(r.id):data.unlockedTreasureIds.indexOf(r.id)>=0;
+    if(owned){r.duplicate=true;data.starShards=(data.starShards||0)+1;return r;}
+    if(r.type==='avatar')data.unlockedAvatarIds.push(r.id);
+    else if(r.type==='outfit')data.unlockedOutfitIds.push(r.id);
+    else data.unlockedTreasureIds.push(r.id);
+    return r;
+  }
+  function gachaCard(reward){
+    var el=document.createElement('article');el.className='kd-gacha-card rarity-'+(reward.rarity||'normal');
+    if(reward.type==='avatar'){
+      var img=document.createElement('img');img.src=reward.src;img.alt='';img.loading='lazy';el.appendChild(img);
     } else {
-      var icon = document.createElement('span'); icon.className = 'kd-reward-icon'; icon.textContent = reward.icon; visual.appendChild(icon);
-      $('kdGachaEquipBtn').textContent = 'この着せ替えを使う';
-      $('kdGachaRarityBadge').textContent = '✨ NEW COSTUME';
+      var icon=document.createElement('span');icon.className='kd-gacha-card-icon';icon.textContent=reward.icon||'💎';el.appendChild(icon);
     }
-    $('kdGachaTitle').textContent = '新アイテムを獲得！';
-    $('kdGachaRewardName').textContent = '🎉 ' + reward.label + ' を獲得！';
-    $('kdGachaRewardDescription').textContent = reward.description + '（メダル5枚を使用）';
-    $('kdGachaEquipBtn').classList.remove('kd-hidden');
-    $('kdGachaCloseBtn').classList.remove('kd-hidden');
-    $('kdGachaDialog').classList.remove('is-spinning');
-    $('kdGachaDialog').classList.add('is-revealed');
-    $('kdGachaOverlay').classList.remove('is-spinning');
-    gachaBusy = false; updateMedalUI(); playDungeonSfx('unlock');
+    var label=document.createElement('strong');label.textContent=reward.label;el.appendChild(label);
+    var kind=document.createElement('small');kind.textContent=(reward.duplicate?'★ 重複→かけら':({normal:'ノーマル',rare:'レア',super:'スーパーレア',special:'スペシャルレア'}[reward.rarity]||'アイテム'));el.appendChild(kind);
+    return el;
   }
-  function startGacha() {
-    if (gachaBusy) return;
-    var prizes = availableRewards();
-    if (!prizes.length) { showToast('すべてのアバターと着せ替えを獲得しました！'); return; }
-    if (data.medals < 5) { showToast('ガチャにはメダルが5枚必要です。あと' + (5 - data.medals) + '枚です。'); return; }
-    gachaBusy = true; data.medals -= 5;
-    var reward = prizes[Math.floor(Math.random() * prizes.length)];
-    if (reward.type === 'avatar') data.unlockedAvatarIds.push(reward.id);
-    else data.unlockedOutfitIds.push(reward.id);
-    data.unlockedAvatarIds = Array.from(new Set(data.unlockedAvatarIds));
-    data.unlockedOutfitIds = Array.from(new Set(data.unlockedOutfitIds));
-    pendingReward = reward; saveData(); renderHome();
-    var visual = $('kdGachaRewardVisual'); visual.innerHTML = '<div class="kd-gacha-capsule" aria-hidden="true"><span>?</span><i>✦</i><b>✧</b></div>';
-    $('kdGachaTitle').textContent = '召喚中…';
-    $('kdGachaRarityBadge').textContent = '✨ LOADING DROP';
-    $('kdGachaRewardName').textContent = 'カプセルを開いています';
-    $('kdGachaRewardDescription').textContent = 'どんな仲間・着せ替えが出るかな？';
-    $('kdGachaEquipBtn').classList.add('kd-hidden'); $('kdGachaCloseBtn').classList.add('kd-hidden');
-    var overlay = $('kdGachaOverlay'), dialog = $('kdGachaDialog');
-    overlay.classList.add('is-spinning'); overlay.classList.remove('kd-hidden');
-    dialog.classList.add('is-spinning'); dialog.classList.remove('is-revealed');
+  function revealGachaReward() {
+    if(!gachaBusy)return;
+    if(gachaRevealTimer){clearTimeout(gachaRevealTimer);gachaRevealTimer=null;}
+    var list=pendingGachaDraws,visual=$('kdGachaRewardVisual');visual.replaceChildren();
+    visual.classList.toggle('is-ten',list.length===10);
+    list.forEach(function(r){visual.appendChild(gachaCard(r));});
+    var rare=list.some(function(r){return r.rarity==='special';})?'special':list.some(function(r){return r.rarity==='super';})?'super':list.some(function(r){return r.rarity==='rare';})?'rare':'normal';
+    $('kdGachaDialog').dataset.rarity=rare;
+    $('kdGachaRarityBadge').textContent=({normal:'🔹 ノーマル',rare:'💜 レア',super:'🌟 スーパーレア',special:'🌈 スペシャルレア'}[rare]);
+    $('kdGachaTitle').textContent=list.length===10?'10連ガチャの結果！':'ガチャの結果！';
+    var newcomers=list.filter(function(r){return !r.duplicate;}).length;
+    $('kdGachaRewardName').textContent=list.length===10?'✨ 新しい景品 '+newcomers+'個 ／ 10回':(list[0].duplicate?'星のかけらを獲得！':'🎉 '+list[0].label+'を獲得！');
+    $('kdGachaRewardDescription').textContent='景品はコレクションに保存しました。重複は星のかけらになります。';
+    pendingReward=list.length===1&&!list[0].duplicate&&list[0].type!=='treasure'?list[0]:null;
+    $('kdGachaEquipBtn').classList.toggle('kd-hidden',!pendingReward);
+    if(pendingReward)$('kdGachaEquipBtn').textContent=pendingReward.type==='avatar'?'このアバターに変更':'この着せ替えを使う';
+    $('kdGachaSkipBtn').classList.add('kd-hidden');
+    $('kdGachaCloseBtn').classList.remove('kd-hidden');
+    $('kdGachaAgainBtn').classList.toggle('kd-hidden',data.medals<5);
+    $('kdGachaAgain10Btn').classList.toggle('kd-hidden',data.medals<50);
+    $('kdGachaDialog').classList.remove('is-spinning');$('kdGachaDialog').classList.add('is-revealed');
+    $('kdGachaOverlay').classList.remove('is-spinning');
+    gachaBusy=false;updateMedalUI();playDungeonSfx(rare==='special'?'levelup':'unlock');
+  }
+  function startGacha(count) {
+    if(gachaBusy)return false;
+    count=count===10?10:1;
+    var cost=count*5;
+    if(data.medals<cost){showToast(count+'回ガチャにはメダルが'+cost+'枚必要です。');return false;}
+    // Deduct only once and persist the complete batch before animations.
+    gachaBusy=true;data.medals-=cost;
+    pendingGachaDraws=[];pendingReward=null;
+    for(var i=0;i<count;i++){
+      var prizes=availableRewards();
+      var picked=choosePrize(prizes.length?prizes:allRewards());
+      pendingGachaDraws.push(grantPrize(picked));
+    }
+    saveData();renderHome();
+    $('kdGachaOwnedMedals').textContent='🪙 '+data.medals+'枚';
+    var visual=$('kdGachaRewardVisual');visual.classList.remove('is-ten');visual.innerHTML='<div class="kd-gacha-capsule" aria-hidden="true"><span>🎁</span><i>✦</i><b>✧</b></div>';
+    $('kdGachaTitle').textContent=count===10?'10連召喚中…':'宝箱を開封中…';
+    $('kdGachaRarityBadge').textContent='💫 魔法陣が輝いている…';
+    $('kdGachaRewardName').textContent='宝箱から何が出るかな？';
+    $('kdGachaRewardDescription').textContent=count===10?'10個の景品をまとめて表示します。':'まもなく景品が登場します。';
+    ['kdGachaEquipBtn','kdGachaCloseBtn','kdGachaAgainBtn','kdGachaAgain10Btn'].forEach(function(id){$(id).classList.add('kd-hidden');});
+    $('kdGachaSkipBtn').classList.remove('kd-hidden');
+    var overlay=$('kdGachaOverlay'),dialog=$('kdGachaDialog');delete dialog.dataset.rarity;
+    overlay.classList.add('is-spinning');overlay.classList.remove('kd-hidden');
+    dialog.classList.add('is-spinning');dialog.classList.remove('is-revealed');
     playDungeonSfx('gacha');
-    if (gachaRevealTimer) clearTimeout(gachaRevealTimer);
-    gachaRevealTimer = setTimeout(function () { gachaRevealTimer = null; revealGachaReward(reward); }, 1500);
+    if(gachaRevealTimer)clearTimeout(gachaRevealTimer);
+    gachaRevealTimer=setTimeout(revealGachaReward,count===10?1800:1400);
+    return true;
   }
   function closeGacha() {
     if (gachaBusy) return;
     if (gachaRevealTimer) { clearTimeout(gachaRevealTimer); gachaRevealTimer = null; }
     $('kdGachaOverlay').classList.add('kd-hidden'); $('kdGachaOverlay').classList.remove('is-spinning');
-    $('kdGachaDialog').classList.remove('is-spinning', 'is-revealed'); pendingReward = null;
+    $('kdGachaDialog').classList.remove('is-spinning', 'is-revealed'); pendingReward = null;pendingGachaDraws=[];
   }
   function equipGachaReward() {
     if (gachaBusy) return;
@@ -393,10 +479,15 @@
   }
   function renderHome() {
     if (!data.profile) { showScreen('kdSetupScreen'); return; }
+    syncProfileName();
     var info = levelInfo(data.totalExp);
     var tier = TIER_META[tierIndex(info.level)];
     $('kdHomeAvatar').src = assetAvatar(data.profile.avatar);
     $('kdHomeAvatar').alt = (AVATARS.find(function (a) { return a.id === clampAvatar(data.profile.avatar); }) || AVATARS[3]).label;
+    if ($('kdHomePortrait')) {
+      $('kdHomePortrait').src = assetAvatar(data.profile.avatar);
+      $('kdHomePortrait').alt = $('kdHomeAvatar').alt + 'のアイコン';
+    }
     setHomeOutfit();
     updateMedalUI();
     $('kdHomeName').textContent = data.profile.name;
@@ -411,6 +502,14 @@
     $('kdHomeClears').textContent = data.clears;
     $('kdHomeCorrectRate').textContent = data.totalAnswered ? Math.round(data.totalCorrect / data.totalAnswered * 100) + '%' : '—';
     $('kdHomeBestLevel').textContent = info.level;
+    var hearts=$('kdHomeFriendshipHearts');
+    if (hearts) {
+      // Cosmetic companion affinity: grows with completed adventures; never
+      // changes medals, reward odds, question selection or saved progression.
+      var filled=Math.min(5,1+Math.floor((Number(data.clears)||0)/3));
+      hearts.textContent=Array.from({length:5},function(_,i){return i<filled?'♥':'♡';}).join(' ');
+      hearts.setAttribute('aria-label','なかよし度：5つ中'+filled+'つ');
+    }
     renderHistory();
   }
   function renderHistory() {
@@ -433,6 +532,27 @@
       row.appendChild(left); row.appendChild(right); list.appendChild(row);
     });
   }
+  function renderTrainingRecords() {
+    var host=$('kdTrainingRecordsList'); if (!host) return;
+    host.replaceChildren();
+    var records=[];
+    try { records=JSON.parse(localStorage.getItem('aphasiaTrainingRecordsV4') || '[]'); } catch (_) {}
+    if (!Array.isArray(records)) records=[];
+    if (!records.length) {
+      var empty=document.createElement('p'); empty.className='kd-history-empty';
+      empty.textContent='まだトレーニングの記録はありません。'; host.appendChild(empty); return;
+    }
+    records.slice(-20).reverse().forEach(function(record) {
+      var row=document.createElement('div'); row.className='kd-history-item';
+      var left=document.createElement('div');
+      var name=document.createElement('strong'); name.textContent=String(record.activity || record.genre || 'トレーニング').slice(0,65);
+      var date=document.createElement('small'); date.textContent=String(record.date || '') + ' ' + String(record.time || '');
+      left.appendChild(name);left.appendChild(date);
+      var right=document.createElement('strong');
+      right.textContent=(Number(record.score)||0)+' / '+(Number(record.total)||0)+'問';
+      row.appendChild(left);row.appendChild(right);host.appendChild(row);
+    });
+  }
   function openSettings() {
     var p = data.profile || { name: '', avatar: setupAvatar };
     $('kdSettingsName').value = p.name || '';
@@ -448,6 +568,8 @@
     if (!window.confirm('ダンジョンの設定を変更しますか？')) return;
     var name = ($('kdSettingsName').value || '').trim().slice(0, 12);
     if (!name) name = data.profile && data.profile.name ? data.profile.name : '冒険者';
+    var common=window.KotobaQuestUserProfile&&window.KotobaQuestUserProfile.updateDisplayName(name);
+    if(common&&!common.ok){showToast(common.message||'名前を保存できませんでした');return;}
     data.profile = { name: name, avatar: settingsAvatar, outfitId: data.profile ? data.profile.outfitId || null : null };
     data.rules.questionCount = Number($('kdQuestionCount').value) === 10 ? 10 : 5;
     data.rules.autoRead = $('kdAutoRead').checked;
@@ -467,6 +589,7 @@
   var kdBgmAudio = document.getElementById('kdBgmAudio');
   function startDungeonBgm(){
     try{
+      if (document.hidden) return;
       if(!kdBgmAudio) kdBgmAudio=document.getElementById('kdBgmAudio');
       if(!kdBgmAudio || localStorage.getItem('kotobaquest_music_v3')==='0') return;
       var vol=Number(localStorage.getItem('kotobaquest_volume_v3')||60);
@@ -519,10 +642,11 @@
   document.addEventListener('visibilitychange',function(){
     if(document.hidden){
       stopDungeonBgm();
-      try{localStorage.setItem('kotobaquest_music_v3','0');}catch(e){}
       try{if(window.speechSynthesis)window.speechSynthesis.cancel();}catch(e){}
       try{if(window.AndroidSpeech && typeof window.AndroidSpeech.stopTts==='function')window.AndroidSpeech.stopTts();}catch(e){}
       try{if(kdAudioCtx&&kdAudioCtx.state==='running')kdAudioCtx.suspend();}catch(e){}
+    } else if (!$('kdHomeScreen').classList.contains('kd-hidden') || !$('kdChallengeScreen').classList.contains('kd-hidden')) {
+      startDungeonBgm();
     }
   });
   var MIC_QUESTIONS = [
@@ -830,6 +954,7 @@
   }
   function speakCurrentQuestion() {
     if (!challenge) return;
+    try { if (JSON.parse(localStorage.getItem('kotobaquest_audio_v86')||'{}').ttsOn===false) return; } catch(_) {}
     var q = challenge.questions[challenge.index];
     var phrase = (q.context ? q.context + '。' : '') + q.prompt;
     if (q.kind === 'choice') phrase += '。選択肢。' + q.choices.join('。');
@@ -853,19 +978,17 @@
     window.location.href = 'index.html?v=86#title';
   }
   function resetDungeon() {
-    var ok = window.confirm('コトバ・ダンジョンのレベル・経験値・名前・アバター・冒険記録を初期化します。\nほかのトレーニングの記録は消えません。\nよろしいですか？');
+    var ok = window.confirm('コトバ・ダンジョンのレベル・経験値・メダル・アバター・冒険記録を初期化します。\n共通プロフィールの名前と、ほかのトレーニング記録は消えません。\nよろしいですか？');
     if (!ok) return;
     try { localStorage.removeItem(SAVE_KEY); } catch (e) { }
     data = defaultData(); challenge = null; setupAvatar = 4; settingsAvatar = 4; pendingReward = null; pendingBonusOffer = false;
-    $('kdSetupName').value = '';
     renderSetupAvatars(); showScreen('kdSetupScreen'); showToast('初期化しました。新しい冒険を始めましょう。');
   }
   function setupEvents() {
     $('kdBackBtn').addEventListener('click', function(){ playDungeonSfx('click'); returnToMain(); });
-    $('kdSettingsTopBtn').addEventListener('click', function () { if (data.profile) openSettings(); else showToast('先に名前とアバターを決めましょう。'); });
+    $('kdSettingsTopBtn').addEventListener('click', function () { if (data.profile) openSettings(); else showToast('先にアバターを選びましょう。'); });
     $('kdBeginSetupBtn').addEventListener('click', function () {
-      var name = ($('kdSetupName').value || '').trim().slice(0, 12) || '冒険者';
-      data.profile = { name: name, avatar: setupAvatar, outfitId: null };
+      data.profile = { name: globalProfileName(), avatar: setupAvatar, outfitId: null };
       saveData(); renderHome(); showScreen('kdHomeScreen');
     });
     $('kdStartChallengeBtn').addEventListener('click', function(){ startChallenge(false); });
@@ -874,13 +997,24 @@
     var bonusOverlay = $('kdBonusEventOverlay'); if (bonusOverlay) bonusOverlay.addEventListener('click', function (event) { if (event.target === bonusOverlay) skipBonusEvent(); });
     var micBtn=$('kdMicAnswerBtn'); if(micBtn)micBtn.addEventListener('click',startDungeonMic);
     $('kdOpenSettingsBtn').addEventListener('click', openSettings);
+    $('kdHomeBottomBtn').addEventListener('click', returnToMain);
+    $('kdOpenTrainingRecordsBtn').addEventListener('click', function () {
+      renderTrainingRecords();
+      $('kdTrainingRecordsPanel').classList.remove('kd-hidden');
+      $('kdTrainingRecordsPanel').scrollIntoView({behavior:'smooth',block:'start'});
+    });
+    $('kdCloseTrainingRecordsBtn').addEventListener('click', function () { $('kdTrainingRecordsPanel').classList.add('kd-hidden'); });
     $('kdSaveSettingsBtn').addEventListener('click', saveProfileSettings);
     $('kdCancelSettingsBtn').addEventListener('click', function () { renderHome(); showScreen('kdHomeScreen'); });
     $('kdResetBtn').addEventListener('click', resetDungeon);
     $('kdShowHistoryBtn').addEventListener('click', function () { $('kdHistoryPanel').classList.toggle('kd-hidden'); });
     $('kdOpenCollectionBtn').addEventListener('click', function () { playDungeonSfx('click'); toggleCollection(); });
     $('kdCloseCollectionBtn').addEventListener('click', function () { toggleCollection(false); });
-    $('kdGachaBtn').addEventListener('click', startGacha);
+    $('kdGachaBtn').addEventListener('click', function(){ startGacha(1); });
+    $('kdGacha10Btn').addEventListener('click', function(){ startGacha(10); });
+    $('kdGachaSkipBtn').addEventListener('click', revealGachaReward);
+    $('kdGachaAgainBtn').addEventListener('click', function(){ startGacha(1); });
+    $('kdGachaAgain10Btn').addEventListener('click', function(){ startGacha(10); });
     $('kdGachaEquipBtn').addEventListener('click', equipGachaReward);
     $('kdGachaCloseBtn').addEventListener('click', closeGacha);
     $('kdGachaOverlay').addEventListener('click', function (event) { if (event.target === $('kdGachaOverlay')) closeGacha(); });
@@ -899,6 +1033,18 @@
     renderSetupAvatars();
     updateMedalUI();
     setupEvents();
+    // Browsers may block BGM before the first user gesture. Retry on tap.
+    document.addEventListener('pointerdown', function(){
+      if(!$('kdHomeScreen').classList.contains('kd-hidden') || !$('kdChallengeScreen').classList.contains('kd-hidden')) startDungeonBgm();
+    }, {passive:true});
+    window.addEventListener('storage', function(event){
+      if(event.key==='kotobaquest_music_v3'||event.key==='kotobaquest_audio_v86'||event.key==='kotobaquest_volume_v3'){
+        if(event.key==='kotobaquest_music_v3'&&event.newValue==='0')stopDungeonBgm();
+        else if(!$('kdHomeScreen').classList.contains('kd-hidden')||!$('kdChallengeScreen').classList.contains('kd-hidden'))startDungeonBgm();
+      }
+      if(event.key==='kotobaquest_user_profile_v1'&&data.profile)renderHome();
+    });
+    window.addEventListener('kotoba-profile-updated', function(){ if(data.profile)renderHome(); });
     if (data.profile) { renderHome(); showScreen('kdHomeScreen'); }
     else showScreen('kdSetupScreen');
   }
