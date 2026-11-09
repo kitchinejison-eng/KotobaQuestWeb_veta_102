@@ -52,7 +52,9 @@ var ANAGRAM_ITEMS = [
 QUESTIONS.anagram = ANAGRAM_ITEMS.map(function(x,i){return {kind:'anagram',question:'文字タイルを正しい順番に並べましょう。',answer:x[0],tokens:x[1],hint:'文字を一つずつ声に出して、言葉のまとまりを考えましょう。',itemNo:i+1};});
 
 // 写字・見写しの問題データは独立ファイルで管理します。判定処理は既存のものを保ちます。
-var COPY_ITEMS = window.KotobaCopyQuestionBank ? window.KotobaCopyQuestionBank.words.slice() : [];
+// Share the same array with VETA11's question-bank extension so the fallback
+// stroke/OCR candidate dictionary recognizes every added writing character.
+var COPY_ITEMS = window.KotobaCopyQuestionBank ? window.KotobaCopyQuestionBank.words : [];
 QUESTIONS.copy = window.KotobaCopyQuestionBank ? window.KotobaCopyQuestionBank.makeQuestions() : [];
 
 // 動作画像の4択問題。旧式の自己申告/まねる課題の定義は互換性のため残し、出題には使用しない。

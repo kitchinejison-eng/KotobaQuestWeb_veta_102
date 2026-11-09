@@ -1,0 +1,85 @@
+/* VETA14 – pure CSS pixel-fantasy room and light-weight treasure draw. */
+.kd-pixel-room { isolation:isolate; }
+.kd-pixel-room .kd-pixel-partner { left:50%; bottom:8%; min-width:0; width:clamp(126px,25%,200px); transform:translateX(-50%); pointer-events:none; }
+.kd-pixel-room .kd-pixel-avatar-wrap { width:100%; height:clamp(148px,25vw,205px); display:flex; align-items:flex-end; justify-content:center; }
+.kd-pixel-room .kd-profile-avatar { position:relative; width:100%; height:100%; object-fit:contain; object-position:50% 100%; margin:0; }
+.kd-pixel-room .kd-avatar-outfit { position:absolute; top:0; right:0; }
+.kd-pixel-room .kd-partner-label { position:relative; margin-top:-3px; }
+.kd-pixel-home #kdHomeScreen .kd-gacha-actions,
+#kdHomeScreen.kd-pixel-home>.kd-collectibles-card .kd-gacha-actions { display:grid; grid-template-rows:1fr 1fr; gap:10px; }
+.kd-pixel-home #kdGachaBtn,.kd-pixel-home #kdGacha10Btn { display:grid; place-items:center; width:100%; height:auto; min-height:51px; margin:0; padding:8px 5px; border:3px solid white; outline:2px solid #7c478f; border-radius:12px; font-size:clamp(12px,2.5vw,17px); line-height:1.22; font-weight:1000; color:#512661; background:linear-gradient(140deg,#ffdded,#fba7cf); box-shadow:0 4px 0 #b45c9d; animation:none; }
+.kd-pixel-home #kdGacha10Btn { background:linear-gradient(145deg,#ffefbc,#ffcf79); box-shadow:0 4px 0 #b4803a; }
+.kd-pixel-home #kdGachaBtn:disabled,.kd-pixel-home #kdGacha10Btn:disabled { opacity:.65; filter:grayscale(.35); box-shadow:0 4px 0 #ad9aa5; }
+.kd-gacha-overlay { padding:8px; background:radial-gradient(ellipse at 50% 20%,#5952a9e8,#141331ee); backdrop-filter:blur(3px); }
+.kd-gacha-dialog { width:min(580px,100%); max-height:96dvh; padding:14px clamp(10px,2.5vw,22px) 18px; border:5px solid #fff6cf; outline:4px solid #52346c; border-radius:19px; color:#302053; background:linear-gradient(180deg,#7f75c8 0 16%,#ac96d7 16% 19%,#ece2ff 19% 100%); box-shadow:0 9px 0 #432d69,0 19px 40px #0007; }
+.kd-gacha-dialog::before { content:""; position:absolute; inset:18% 0 0; z-index:0; pointer-events:none; opacity:.3; background:repeating-linear-gradient(0deg,transparent 0 28px,#7d64ad 28px 31px),repeating-linear-gradient(90deg,transparent 0 74px,#8b70b9 74px 78px); }
+.kd-gacha-dialog>* { position:relative; z-index:1; }
+.kd-gacha-banner { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 10px; background:linear-gradient(#573783,#32215c); color:#fff4c7; border:3px solid #ffe6a7; border-radius:11px; font-weight:1000; font-size:clamp(12px,3vw,18px); }
+.kd-gacha-banner strong { white-space:nowrap; }
+.kd-gacha-dialog .kd-pill { margin-top:9px; }
+.kd-gacha-pool-note { margin:7px 0; color:#573d84; font-weight:800; font-size:12px; }
+.kd-gacha-dialog h2 { margin:8px 0; color:#3f276c; font-size:clamp(20px,5vw,29px); text-shadow:1px 2px #fff; }
+.kd-gacha-chest { display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:4px; margin:5px auto; font-size:32px; color:#ffd761; filter:drop-shadow(0 2px 0 #5b3987); }
+.kd-gacha-chest small { display:block; flex-basis:100%; color:#644c8e; font-size:11px; }
+.kd-gacha-dialog.is-spinning .kd-gacha-chest { animation:kdChestShake .45s ease-in-out infinite alternate; }
+.kd-gacha-rarity-badge { font-weight:1000; border:3px solid #fff; outline:1px solid #67538b; border-radius:7px; }
+.kd-gacha-dialog[data-rarity="normal"] .kd-gacha-rarity-badge { background:#2a90ce; }
+.kd-gacha-dialog[data-rarity="rare"] .kd-gacha-rarity-badge { background:#8249c9; }
+.kd-gacha-dialog[data-rarity="super"] .kd-gacha-rarity-badge { background:linear-gradient(#ffe479,#d18d18); color:#52330a; }
+.kd-gacha-dialog[data-rarity="special"] .kd-gacha-rarity-badge { background:linear-gradient(90deg,#f981aa,#efbc4d,#65d4a5,#7799ff,#bd7cec); }
+.kd-gacha-reward-visual { display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:8px; min-height:130px; margin:6px auto; }
+.kd-gacha-reward-visual.is-ten { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:5px; min-height:0; }
+.kd-gacha-card { display:flex; min-width:0; flex-direction:column; align-items:center; justify-content:center; gap:3px; width:clamp(150px,47vw,210px); min-height:136px; padding:10px 6px; border:5px solid #c9f2ff; outline:2px solid #456c9b; border-radius:12px; color:#262453; background:linear-gradient(#f4fdff,#b9dffc); box-shadow:0 5px 0 #507fa3; }
+.kd-gacha-card.rarity-rare { background:linear-gradient(#fff1ff,#d5acfb); border-color:#eed0ff; outline-color:#7b55aa; }
+.kd-gacha-card.rarity-super { background:linear-gradient(#fff8dc,#ffd875); border-color:#fff4b4; outline-color:#b78437; }
+.kd-gacha-card.rarity-special { background:linear-gradient(135deg,#ffdcfa,#d8f8ff 34%,#f8e8a5 67%,#e5c8ff); border-color:#fff; outline-color:#bc76a9; }
+.kd-gacha-card img { width:73px; height:75px; max-width:100%; object-fit:contain; image-rendering:pixelated; animation:none; }
+.kd-gacha-card-icon { font-size:57px; }
+.kd-gacha-card strong { font-size:13px; line-height:1.25; overflow-wrap:anywhere; }
+.kd-gacha-card small { font-size:10px; color:#665483; }
+.kd-gacha-reward-visual.is-ten .kd-gacha-card { width:100%; min-height:98px; padding:4px 1px; border-width:3px; border-radius:7px; outline-width:1px; box-shadow:0 2px 0 #6a5084; }
+.kd-gacha-reward-visual.is-ten .kd-gacha-card img { width:35px; height:40px; }
+.kd-gacha-reward-visual.is-ten .kd-gacha-card-icon { font-size:30px; }
+.kd-gacha-reward-visual.is-ten .kd-gacha-card strong { font-size:clamp(9px,1.8vw,12px); }
+.kd-gacha-reward-visual.is-ten .kd-gacha-card small { font-size:9px; line-height:1.2; }
+.kd-gacha-dialog.is-spinning .kd-gacha-capsule { border-radius:20px; width:126px; height:110px; background:radial-gradient(circle,#ffefbd,#ba78c6); animation:kdChestShake .6s ease-in-out infinite alternate; }
+.kd-gacha-dialog.is-spinning .kd-gacha-capsule span { font-size:70px; }
+.kd-gacha-reward-name { color:#40245e; font-size:clamp(16px,4vw,23px); }
+.kd-gacha-reward-description { margin:5px 0 9px; color:#644e76; font-size:12px; }
+.kd-gacha-dialog .kd-primary-button,.kd-gacha-dialog .kd-secondary-button { min-height:46px; padding:8px 12px; font-size:clamp(13px,3vw,16px); }
+.kd-gacha-again-row { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+.kd-gacha-again-row button { min-width:0; }
+@keyframes kdChestShake { from{transform:translateY(2px) rotate(-3deg);filter:brightness(1)} to{transform:translateY(-7px) rotate(4deg);filter:brightness(1.24)} }
+@media(max-width:520px) {
+  .kd-pixel-room .kd-pixel-partner { width:134px; left:53%; bottom:11%; }
+  .kd-pixel-room .kd-pixel-avatar-wrap { height:146px; }
+  #kdHomeScreen.kd-pixel-home>.kd-collectibles-card { grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); }
+  #kdHomeScreen.kd-pixel-home>.kd-collectibles-card .kd-gacha-actions { gap:8px; }
+  .kd-pixel-home #kdGachaBtn,.kd-pixel-home #kdGacha10Btn { min-height:54px; font-size:11px; }
+  .kd-gacha-card { min-height:115px; }
+  .kd-gacha-reward-visual.is-ten { gap:4px; }
+  .kd-gacha-reward-visual.is-ten .kd-gacha-card { min-height:82px; }
+  .kd-gacha-reward-visual.is-ten .kd-gacha-card img { width:29px; height:30px; }
+  .kd-gacha-reward-visual.is-ten .kd-gacha-card-icon { font-size:24px; }
+}
+@media(prefers-reduced-motion:reduce) { .kd-gacha-dialog.is-spinning .kd-gacha-chest,.kd-gacha-dialog.is-spinning .kd-gacha-capsule { animation:none; } }
+
+/* VETA15: アバターの衣装を身体の位置に合わせて重ねる。 */
+.kd-pixel-room .kd-pixel-avatar-wrap { position:relative; }
+.kd-pixel-room .kd-avatar-outfit {
+  position:absolute; top:24%; left:50%; right:auto; transform:translate(-50%,-50%);
+  min-width:0; width:auto; height:auto; padding:0; border:0; border-radius:0;
+  box-shadow:none; background:none; animation:none; z-index:6;
+  font-size:clamp(25px,5vw,39px); line-height:1; pointer-events:none;
+  filter:drop-shadow(0 2px 1px #32224faa);
+}
+.kd-pixel-room .kd-outfit-crown { top:14%; left:50%; }
+.kd-pixel-room .kd-outfit-glasses { top:47%; left:50%; }
+.kd-pixel-room .kd-outfit-flower,.kd-pixel-room .kd-outfit-ribbon { top:25%; left:76%; }
+.kd-pixel-room .kd-outfit-cape { top:69%; left:50%; width:49%; height:45%; font-size:0; background:linear-gradient(90deg,#9b1f51,#ed6483 50%,#971b4c); clip-path:polygon(23% 0,77% 0,100% 88%,50% 100%,0 88%); opacity:.85; z-index:5; }
+.kd-pixel-room .kd-outfit-sparkle { top:52%; left:78%; }
+.kd-pixel-room .kd-outfit-headphones { top:32%; left:52%; }
+.kd-pixel-room .kd-outfit-medal { top:68%; left:51%; }
+.kd-equipped-outfit-label { max-width:100%; padding:2px 7px; border:2px solid #ffffffd9; border-radius:9px; background:#39235cae; color:#fffbe8; font-size:11px; font-weight:900; line-height:1.25; text-align:center; white-space:normal; text-shadow:0 1px #382045; }
+.kd-outfit-item.is-equipped::after { content:'✓ 装備中'; display:block; color:#664113; font-size:10px; line-height:1.1; }
+@media(max-width:520px){ .kd-outfit-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .kd-outfit-item { min-height:96px; } .kd-equipped-outfit-label { font-size:10px; } }

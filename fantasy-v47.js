@@ -51,6 +51,17 @@ var added = [
  quiz('食べ物が熱すぎてすぐに食べられません。どうしますか？',['急いで飲み込む','少し冷ましてから食べる','床に置く','目を閉じて食べる'],1,'やけどをしないための行動です。','熱い食べ物は無理せず冷ましてから食べます。')
 ];
 Array.prototype.push.apply(QUIZZES, added);
+// VETA11: original fantasy questions plus 80 context-appropriate judgement
+// questions. The user still chooses from the fantasy's existing option UI.
+(window.KotobaV11Facts || []).forEach(function (item) {
+  var q=quiz('次の文章は 正しい？「'+item[0]+'」', ['○ 正しい','× ちがう'], item[1]?0:1,
+    '文章の意味と、日常の知識をゆっくり照らし合わせましょう。',
+    item[1]?'これは正しい説明です。':'この文章には、事実と異なるところがあります。');
+  q.difficultyLevel=item[2];QUIZZES.push(q);
+});
+QUIZZES.forEach(function (q,i) {
+  if (!q.difficultyLevel) q.difficultyLevel=Math.min(10,Math.floor(i/10)+1);
+});
 
 // 起動時の案内キャラクターと台詞を毎回ランダムに変更。
 var INTRO_CHARACTERS = [

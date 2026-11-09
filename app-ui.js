@@ -57,10 +57,10 @@
   window.__showTitleScreen=openTitle;
 
   function setTheme(theme){
-    if(theme!=='red' && theme!=='yellow') theme='blue';
+    if(['blue','red','yellow','green','purple'].indexOf(theme)<0) theme='blue';
     document.body.setAttribute('data-theme',theme);
     save(THEME_KEY,theme);
-    ['blue','red','yellow'].forEach(function(t){
+    ['blue','red','yellow','green','purple'].forEach(function(t){
       var b=$('theme'+t.charAt(0).toUpperCase()+t.slice(1));
       if(b) b.classList.toggle('selected',t===theme);
     });
@@ -297,7 +297,7 @@
       var audio=getBgmAudio(); if(audio) audio.volume=getBgmVolume();
     });
     var testSound=$('testSoundBtn'); if(testSound) testSound.addEventListener('click',function(){ tone(660,0.12,0,0.06); tone(880,0.18,0.13,0.06); });
-    ['blue','red','yellow'].forEach(function(t){
+    ['blue','red','yellow','green','purple'].forEach(function(t){
       var id='theme'+t.charAt(0).toUpperCase()+t.slice(1), b=$(id);
       if(b) b.addEventListener('click',function(){ setTheme(t); });
     });

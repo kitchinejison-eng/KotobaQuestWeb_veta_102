@@ -1,0 +1,35 @@
+/* VETA13: fantasy dialogue layout; avoids the previous desktop/landscape
+   overlap while keeping the original characters, backgrounds and sound. */
+.event-overlay { z-index:1200; min-width:0; padding:0; overflow:hidden; background:#12172d; }
+.event-bg { inset:0; background-position:center; background-size:cover; }
+.event-overlay-skip { position:absolute; z-index:8; top:max(12px,env(safe-area-inset-top)); right:max(12px,env(safe-area-inset-right)); min-width:106px; border-radius:12px; border:3px solid #fff; background:#202b59ec; box-shadow:0 4px 0 #131833; font-size:clamp(13px,2vw,17px); }
+.event-character { z-index:2; left:50%; bottom:clamp(196px,32dvh,290px); width:min(68vw,440px); height:min(57dvh,530px); max-height:none; }
+.event-character img { width:100%; height:100%; object-fit:contain; object-position:center bottom; }
+.event-dialog { z-index:6; left:50%; right:auto; bottom:max(15px,env(safe-area-inset-bottom)); width:min(94vw,900px); min-height:0; max-height:min(46dvh,340px); overflow-y:auto; transform:translateX(-50%); padding:18px clamp(14px,3vw,24px) 13px; background:#0d1831ee; border:4px solid #fff; outline:3px solid #29234e; border-radius:16px; box-shadow:0 9px 0 #171b3c; }
+.event-dialog-name { position:relative; margin:-6px 0 6px; font-size:clamp(15px,2.3vw,22px); line-height:1.3; }
+.event-dialog-text { min-height:57px; max-height:19dvh; overflow-y:auto; padding:3px 0; font-size:clamp(16px,2.3vw,23px); line-height:1.7; font-weight:850; white-space:pre-wrap; overflow-wrap:anywhere; }
+.event-dialog-footer { display:flex; align-items:center; gap:12px; margin-top:8px; }
+.event-progress { padding:4px 10px; border-radius:7px; background:#e4e7ff; color:#323269; font-size:13px; font-weight:900; font-variant-numeric:tabular-nums; }
+.event-step-help { flex:1; color:#dbe5ff; font-size:clamp(10px,1.7vw,13px); }
+.event-dialog .event-dialog-next { position:static; transform:none; display:flex; align-items:center; justify-content:center; flex:0 0 auto; width:auto; height:auto; min-height:43px; padding:7px 15px; border-radius:11px; background:#0a8ac3; font-size:clamp(14px,2vw,19px); box-shadow:0 4px 0 #095472; }
+.event-dialog .event-dialog-next:active { transform:translateY(2px); box-shadow:0 2px 0 #095472; }
+.event-dialog .event-dialog-next:focus-visible { outline:3px solid #ffe16b; outline-offset:3px; }
+@media (orientation:portrait) and (max-width:600px) {
+  .event-character { width:min(72vw,370px); height:min(47dvh,400px); bottom:clamp(200px,32dvh,290px); }
+  .event-dialog { width:calc(100vw - 20px); bottom:max(9px,env(safe-area-inset-bottom)); max-height:42dvh; padding:14px 12px 10px; border-width:3px; }
+  .event-dialog-name { margin:0 0 6px; font-size:16px; }
+  .event-dialog-text { font-size:clamp(15px,4vw,19px); min-height:57px; max-height:20dvh; }
+  .event-step-help { display:none; }
+  .event-dialog-footer { justify-content:space-between; }
+}
+@media (orientation:landscape) and (max-height:650px) {
+  .event-character { left:30%; bottom:8%; width:min(40vw,320px); height:min(73dvh,370px); }
+  .event-dialog { left:auto; right:max(10px,env(safe-area-inset-right)); bottom:max(10px,env(safe-area-inset-bottom)); width:min(57vw,660px); max-height:calc(100dvh - 85px); transform:none; }
+  .event-dialog-name { margin:0 0 4px; font-size:16px; }
+  .event-dialog-text { font-size:clamp(14px,2.4vw,19px); max-height:30dvh; min-height:42px; }
+  .event-step-help { display:none; }
+  .event-dialog-footer { justify-content:space-between; }
+}
+@media (prefers-reduced-motion:reduce) {
+  .event-bg,.event-character,.event-character.rare-event { animation:none!important; }
+}

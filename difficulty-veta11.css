@@ -1,0 +1,7 @@
+.v11-genre-level { display: inline-flex; padding: 5px 11px; border-radius: 999px; background:#fce8b8; color:#60470a; font-size: .92rem; font-weight:800; margin:5px auto; }
+.v11-activity-row { background:rgba(255,255,255,.94); border:1px solid #d7e4ee; border-radius:15px; overflow:hidden; }
+.v11-activity-row .activity-card-native { width:100%; }
+.v11-activity-level { display:block; width:fit-content; margin:5px 0; color:#07655d; font-weight:800; font-size:.91rem; }
+.v11-level-select { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:8px; padding:9px 14px 12px; border-top:1px solid #e2eaf0; font-size:.89rem; font-weight:700; color:#2c475c; }
+.v11-level-select select { min-width:155px; max-width:100%; padding:8px 13px; border:2px solid #92b6d1; border-radius:9px; color:#163d58; background:#fff; font-size:1rem; font-weight:750; }
+@media(max-width:520px){ .v11-level-select select { width:100%; } }
